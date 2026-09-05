@@ -23,7 +23,7 @@ dev = [
 ]
 
 [tool.vercel]
-entrypoint = "app.api:app"
+entrypoint = "main:app"
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
