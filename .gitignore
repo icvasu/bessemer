@@ -1,5 +1,8 @@
 # dataset — supplied by the organisers, not ours to redistribute
 MoveInSync - Anonymised Trip-Log Dataset/
+# the same dataset dropped at the repo root: ~570 MB, never belongs in git
+*.csv
+*.pdf
 
 # secrets
 .env
@@ -19,3 +22,4 @@ scratch/
 # node
 node_modules/
 web/dist/
+.gstack/

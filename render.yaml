@@ -1,0 +1,49 @@
+# Render Blueprint: one Postgres, one web service, both on the free tier.
+#
+# The app already reads PGHOST/PGPORT/PGUSER/PGPASSWORD/PGDATABASE from the
+# environment (app/config.py), so the database wires itself in and no
+# application code changes for hosting. See DEPLOY.md.
+
+databases:
+  - name: bessemer-db
+    databaseName: bessemer
+    user: bessemer
+    plan: free
+    postgresMajorVersion: "17"
+
+services:
+  - type: web
+    name: bessemer
+    runtime: python
+    plan: free
+    # uv.lock stays the single source of truth for versions; exporting it to a
+    # requirements file installs into Render's own interpreter, so the start
+    # command does not have to find a uv-managed virtualenv.
+    buildCommand: pip install uv && uv export --frozen --no-dev --no-emit-project --format requirements-txt -o /tmp/req.txt && pip install -r /tmp/req.txt
+    startCommand: uvicorn app.api:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PGHOST
+        fromDatabase:
+          name: bessemer-db
+          property: host
+      - key: PGPORT
+        fromDatabase:
+          name: bessemer-db
+          property: port
+      - key: PGUSER
+        fromDatabase:
+          name: bessemer-db
+          property: user
+      - key: PGPASSWORD
+        fromDatabase:
+          name: bessemer-db
+          property: password
+      - key: PGDATABASE
+        fromDatabase:
+          name: bessemer-db
+          property: database
+      # Set in the Render dashboard. Without it the deterministic board still
+      # works; only the LLM narration and chat fail.
+      - key: OPENAI_API_KEY
+        sync: false
