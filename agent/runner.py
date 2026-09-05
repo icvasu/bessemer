@@ -52,8 +52,9 @@ import asyncio
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, AsyncIterator
 
+from google.adk.agents.run_config import RunConfig, StreamingMode
 from google.adk.runners import Runner
 from google.adk.sessions import DatabaseSessionService
 from google.genai import types
@@ -62,12 +63,24 @@ from app.config import SQLALCHEMY_URL
 from app.core.alerts import Alert
 from app.sessions import Session, bind_session, unbind_session
 from app import store
-from agent.agent import MODEL, narrator_agent, root_agent
+from agent.agent import MODEL, missing_credentials, narrator_agent, root_agent
+from agent.tools import compose_alert as save_narrative
 
 log = logging.getLogger(__name__)
 
 APP_NAME = "bessemer"
 INVOCATION_TIMEOUT_S = 60.0
+
+RETRY_ATTEMPTS = 2
+"""One retry, then stop. A call that fails twice is an outage rather than a
+blip, and a manager at 08:55 is better served by the structured payload than by
+a third wait."""
+
+RETRY_BACKOFF_S = 1.5
+
+
+class ModelUnavailable(RuntimeError):
+    """The model could not be reached, carrying a reason fit to show a person."""
 
 
 @dataclass
@@ -165,10 +178,11 @@ def conversation_id(session: Session) -> str:
 def task_conversation_id(session: Session, alert_id: int) -> str:
     """A throwaway conversation for one alert write-up.
 
-    Keyed by alert and clock so a re-narration later in the morning starts
-    clean rather than inheriting the earlier one.
+    Keyed by alert, clock, and a unique suffix so a re-narration later in the
+    morning starts clean, and two write-ups of the same alert at the same
+    minute (jump + story build) do not share an ADK session.
     """
-    return f"{conversation_id(session)}:task:{alert_id}:{session.replay.now:%H%M}"
+    return f"{conversation_id(session)}:task:{alert_id}:{session.replay.now:%H%M}:{time.time_ns()}"
 
 
 async def _ensure_conversation(session: Session, user_id: str, sid: str) -> str:
@@ -190,6 +204,56 @@ async def _ensure_conversation(session: Session, user_id: str, sid: str) -> str:
     return sid
 
 
+def _event_text(event) -> str:
+    if not event.content or not event.content.parts:
+        return ""
+    return "".join(p.text for p in event.content.parts if p.text)
+
+
+async def _iter_events(
+    session: Session,
+    user_id: str,
+    text: str,
+    reason: str,
+    sid: str | None = None,
+    agent=None,
+    stream: bool = False,
+):
+    """Run one agent turn and yield ADK events as they arrive.
+
+    The shift is bound for the duration of the call, so the tools can only
+    reach this tenant's data no matter what the model asks for.
+    """
+    missing = missing_credentials()
+    if missing:
+        raise ModelUnavailable(missing)
+
+    sid = await _ensure_conversation(session, user_id, sid or conversation_id(session))
+    message = types.Content(role="user", parts=[types.Part(text=text)])
+    run_config = RunConfig(
+        streaming_mode=StreamingMode.SSE if stream else StreamingMode.NONE
+    )
+
+    token = bind_session(session)
+    started = time.perf_counter()
+    prompt_tokens = completion_tokens = 0
+    try:
+        async for event in runner(agent).run_async(
+            user_id=user_id,
+            session_id=sid,
+            new_message=message,
+            run_config=run_config,
+        ):
+            usage = getattr(event, "usage_metadata", None)
+            if usage:
+                prompt_tokens += getattr(usage, "prompt_token_count", 0) or 0
+                completion_tokens += getattr(usage, "candidates_token_count", 0) or 0
+            yield event
+    finally:
+        unbind_session(token)
+        USAGE.record(reason, time.perf_counter() - started, prompt_tokens, completion_tokens)
+
+
 async def _invoke(
     session: Session,
     user_id: str,
@@ -198,32 +262,15 @@ async def _invoke(
     sid: str | None = None,
     agent=None,
 ) -> str:
-    """Run one agent turn and return its final text.
-
-    The shift is bound for the duration of the call, so the tools can only
-    reach this tenant's data no matter what the model asks for.
-    """
-    sid = await _ensure_conversation(session, user_id, sid or conversation_id(session))
-    message = types.Content(role="user", parts=[types.Part(text=text)])
-
-    token = bind_session(session)
-    started = time.perf_counter()
-    prompt_tokens = completion_tokens = 0
+    """Run one agent turn and return its final text."""
     reply: list[str] = []
-    try:
-        async for event in runner(agent).run_async(
-            user_id=user_id, session_id=sid, new_message=message
-        ):
-            usage = getattr(event, "usage_metadata", None)
-            if usage:
-                prompt_tokens += getattr(usage, "prompt_token_count", 0) or 0
-                completion_tokens += getattr(usage, "candidates_token_count", 0) or 0
-            if event.is_final_response() and event.content and event.content.parts:
-                reply.extend(p.text for p in event.content.parts if p.text)
-    finally:
-        unbind_session(token)
-        USAGE.record(reason, time.perf_counter() - started, prompt_tokens, completion_tokens)
-
+    async for event in _iter_events(
+        session, user_id, text, reason, sid=sid, agent=agent, stream=False
+    ):
+        if event.is_final_response():
+            piece = _event_text(event)
+            if piece:
+                reply.append(piece)
     return "\n".join(reply).strip()
 
 
@@ -255,7 +302,7 @@ async def compose(session: Session, alert: Alert, user_id: str = "line_manager")
         f"save it with compose_alert."
     )
     try:
-        await asyncio.wait_for(
+        reply = await asyncio.wait_for(
             _invoke(
                 session,
                 user_id,
@@ -271,7 +318,36 @@ async def compose(session: Session, alert: Alert, user_id: str = "line_manager")
         log.warning("narrative generation failed for alert %s: %s", alert_id, exc)
         return False
 
+    if alert.narrative is None and reply:
+        # Smaller models often write the summary and skip compose_alert.
+        token = bind_session(session)
+        try:
+            save_narrative(alert_id, narrative=reply)
+        finally:
+            unbind_session(token)
+            session.persist()
+
     return alert.narrative is not None
+
+
+def _unreachable(exc: Exception) -> dict[str, Any]:
+    """What to say when the model did not answer.
+
+    An unset key is an operator problem with one specific fix, so saying which
+    variable is missing beats reporting a generic outage; anything else is
+    genuinely transient and the wording should not overclaim. Either way the
+    sentence ends with the part the manager actually needs, which is that the
+    numbers on the board are untouched by this.
+    """
+    detail = (
+        str(exc)
+        if isinstance(exc, ModelUnavailable)
+        else "I could not reach the model just then."
+    )
+    return {
+        "reply": f"{detail} The board and alerts are still live and accurate.",
+        "error": str(exc),
+    }
 
 
 async def ask(session: Session, text: str, user_id: str = "line_manager") -> dict[str, Any]:
@@ -284,11 +360,44 @@ async def ask(session: Session, text: str, user_id: str = "line_manager") -> dic
     except Exception as exc:  # noqa: BLE001
         USAGE.failures += 1
         log.warning("chat failed: %s", exc)
-        return {
-            "reply": (
-                "I could not reach the model just then. The board and alerts are "
-                "still live and accurate."
-            ),
-            "error": str(exc),
-        }
+        return _unreachable(exc)
     return {"reply": reply or "No answer came back.", "usage": USAGE.as_dict()}
+
+
+async def ask_stream(session: Session, text: str, user_id: str = "line_manager"):
+    """Yield chat progress as dicts so the board can paint tokens as they land."""
+    deadline = time.perf_counter() + INVOCATION_TIMEOUT_S
+    seen = ""
+    reply = ""
+    try:
+        async for event in _iter_events(
+            session, user_id, text, reason="chat", stream=True
+        ):
+            if time.perf_counter() > deadline:
+                raise TimeoutError(f"model call exceeded {INVOCATION_TIMEOUT_S:.0f}s")
+            calls = event.get_function_calls()
+            if calls:
+                name = (calls[0].name or "a tool").replace("_", " ")
+                yield {"type": "status", "text": f"Checking {name}"}
+            piece = _event_text(event)
+            if not piece:
+                continue
+            if event.partial:
+                delta = piece[len(seen) :] if piece.startswith(seen) else piece
+                seen = piece if piece.startswith(seen) else seen + piece
+                if delta:
+                    reply = seen
+                    yield {"type": "delta", "text": delta}
+                continue
+            if event.is_final_response():
+                reply = piece
+                leftover = piece[len(seen) :] if piece.startswith(seen) else (
+                    "" if piece == seen else piece
+                )
+                if leftover:
+                    yield {"type": "delta", "text": leftover}
+        yield {"type": "done", "reply": reply or "No answer came back.", "usage": USAGE.as_dict()}
+    except Exception as exc:  # noqa: BLE001
+        USAGE.failures += 1
+        log.warning("chat failed: %s", exc)
+        yield {"type": "error", **_unreachable(exc)}

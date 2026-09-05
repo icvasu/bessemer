@@ -6,6 +6,10 @@ This is an agent that answers it. It watches every rostered agent's commute, pro
 
 Built on MoveInSync's anonymised trip-log dataset for the **team / line manager** persona.
 
+How this ships into MoveInSync, what is demo-only, and the honest gaps: [docs/SHIP.md](docs/SHIP.md).
+
+For judges: [docs/JURY.md](docs/JURY.md) — a short spoken pitch.
+
 ![The shift board at 08:55](samples/screens/board_0855.png)
 
 ## What it does
@@ -86,44 +90,59 @@ Press **Run the morning** and watch, or press **Jump to 08:55** to open on the w
 
 ## How it is built
 
+Green is arithmetic. Purple is the model. The manager only sees the board on the left.
+
 ```mermaid
 flowchart LR
-  subgraph data [Postgres]
-    CSV[MoveInSync CSVs] -->|db/load.py| T[(trips, rider_legs)]
-    T --> V[views: login legs,\ntravel percentiles,\nshift baselines,\nroster days]
-    R[(roster, queues)]
-    A[(shift_alerts,\nalert_actions,\ncover_log)]
-    S[(ADK sessions)]
+  classDef ui fill:#dbeafe,stroke:#1e40af,color:#1e3a5f
+  classDef api fill:#93c5fd,stroke:#1e3a5f,color:#1e3a5f
+  classDef det fill:#a7f3d0,stroke:#047857,color:#064e3b
+  classDef llm fill:#ddd6fe,stroke:#6d28d9,color:#4c1d95
+  classDef data fill:#fed7aa,stroke:#c2410c,color:#7c2d12
+
+  UI["Shift board<br/>queues · alerts · chat · story"]:::ui
+  API["FastAPI :8000"]:::api
+
+  subgraph DET["Deterministic core — Python, ~15ms"]
+    CLK["Replay clock"]:::det
+    MATH["Who is late · how short<br/>service level · what to do"]:::det
   end
 
-  subgraph core [Deterministic core, ~15ms per tick]
-    CLK[replay clock] --> ST[rider state]
-    ST --> ETA[arrival projection]
-    ETA --> Q[queue headcount]
-    Q --> SLA[Erlang C service level\n+ day rollup]
-    SLA --> AL[alert: cause, triggers,\noptions, hold-over cost]
-    CTX[benchmarks] --> AL
-    CAND[cover candidates] --> AL
+  subgraph LLM["LLM — only when needed"]
+    NAR["Narrator · 2 tools"]:::llm
+    AST["Chat · 7 tools"]:::llm
   end
 
-  subgraph agent [ADK agent, only when the situation changes]
-    N[narrator: 2 tools] -->|compose_alert| A
-    CH[assistant: 7 tools] -->|answers| UI
-  end
+  PG[("Postgres<br/>trips · roster · alerts")]:::data
 
-  V --> CLK
-  R --> Q
-  AL -->|persist| A
-  AL -->|needs_narrative| N
-  A --> API[FastAPI]
-  API --> UI[shift board]
-  UI -->|act| API
-  UI -->|ask| CH
-  S --- N
-  S --- CH
+  UI -->|watch / act / ask| API
+  API --> CLK
+  CLK --> MATH
+  PG --> CLK
+  MATH -->|save| PG
+  MATH -->|situation changed| NAR
+  API -->|question| AST
+  NAR -->|summary + drafts| API
+  AST -->|answer| API
 ```
 
-Where the model sits: only in the bottom box, only when an alert opens, resolves, changes cause, changes recommendation, or crosses a severity band. A 150-tick morning across two queues produces about 11 narratives. Everything else is arithmetic.
+For a slide: [SVG](docs/architecture.svg) · [PNG](docs/architecture.png) · [Excalidraw](docs/architecture.excalidraw)
+
+The model writes only when an alert opens, resolves, changes cause, changes recommendation, or crosses a severity band. A 150-tick morning across two queues produces about 11 narratives. Everything else is arithmetic.
+
+One tick, without the model:
+
+```mermaid
+flowchart LR
+  classDef det fill:#a7f3d0,stroke:#047857,color:#064e3b
+  CLK[Replay clock]:::det --> ST[Rider state]:::det
+  ST --> ETA[Arrival]:::det
+  ETA --> Q[Queue headcount]:::det
+  Q --> SLA[Erlang C + day]:::det
+  SLA --> AL[Alert + options]:::det
+  CTX[Benchmarks]:::det --> AL
+  CAND[Cover candidates]:::det --> AL
+```
 
 ### The pieces
 
@@ -194,4 +213,4 @@ All from the dataset's own README, each counted in the load log.
 
 Postgres for everything durable, including the agent's sessions. Every table and every endpoint is keyed by `business_unit` and `office`, so pointing this at another tenant is a config change. The reasoning core does no model calls and no per-tick database round trips, which is what makes it credible at enterprise volume. The ADK agent deploys to Cloud Run with one command, and the model behind it is a one-line swap.
 
-The replay is the only piece that would be replaced in production, by a consumer of live trip events. Nothing downstream would notice.
+The replay is the only piece that would be replaced in production, by a consumer of live trip events. Nothing downstream would notice. Partner / ship notes: [docs/SHIP.md](docs/SHIP.md).

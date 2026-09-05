@@ -16,12 +16,16 @@ from __future__ import annotations
 import asyncio
 from contextvars import ContextVar
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, time, timedelta
 from typing import Any
 
+from app.config import LIVE_ANCHOR, LIVE_RATE, MODE
 from app.core.alerts import Alert
 from app.replay import Replay
 from app import store
+
+LIVE_SPEED = LIVE_RATE / 60.0
+"""`speed` is replay minutes per real second, so real time is a sixtieth."""
 
 
 @dataclass
@@ -41,6 +45,28 @@ class Session:
     timeline: Any = None
     """A `Timeline` once the morning has been captured for scrubbing."""
 
+    mode: str = MODE
+    """`replay` or `live`. Only affects how fast the clock runs and whether it
+    starts by itself; every read downstream is guarded by `now` regardless."""
+
+    @property
+    def live(self) -> bool:
+        return self.mode == "live"
+
+    def target_clock(self, wall: datetime | None = None) -> datetime:
+        """Where the clock should be, derived from elapsed wall time.
+
+        Deriving the position rather than accumulating sleeps is what keeps a
+        live clock honest. A tick that takes longer than its budget, or an
+        event loop busy narrating, would otherwise leave the board permanently
+        behind by however much it once fell behind. Computed from the start
+        instant, it catches up instead.
+        """
+        if self.started_wall is None or self.started_clock is None:
+            return self.replay.now
+        elapsed = ((wall or datetime.now()) - self.started_wall).total_seconds()
+        return self.started_clock + timedelta(minutes=elapsed * self.speed)
+
     @property
     def key(self) -> str:
         return session_key(
@@ -56,6 +82,12 @@ class Session:
             self.alert_ids[queue] = store.save_alert(alert)
 
     def alert_for(self, alert_id: int) -> tuple[str, Alert] | None:
+        # Ollama/LiteLLM pass tool arguments as strings; 1851 != "1851"
+        # would miss every alert and the narrator would save nothing.
+        try:
+            alert_id = int(alert_id)
+        except (TypeError, ValueError):
+            return None
         for queue, known_id in self.alert_ids.items():
             if known_id == alert_id:
                 return queue, self.replay.alerts[queue]
@@ -67,6 +99,23 @@ class Session:
 
 def session_key(bu: str, office: str, shift_date: date, shift_type: str) -> str:
     return f"{bu}|{office}|{shift_date.isoformat()}|{shift_type}"
+
+
+def live_start(replay: Replay) -> datetime:
+    """Where a live clock begins, clamped to the window the board watches.
+
+    An anchor of `now` maps the wall clock's own time-of-day onto the shift
+    date, which is what a consumer of real trip events would see and what a
+    real deployment wants. An HH:MM anchor pins the start instead, which is
+    what a demo wants: the presenter's afternoon is not interesting, the
+    quarter-hour before the shift starts is.
+    """
+    anchor = LIVE_ANCHOR.strip().lower()
+    if anchor in {"", "now", "wall"}:
+        at = datetime.combine(replay.shift_date, datetime.now().time())
+    else:
+        at = datetime.combine(replay.shift_date, time.fromisoformat(anchor))
+    return min(max(at, replay.clock_start), replay.clock_end)
 
 
 SESSIONS: dict[str, Session] = {}
@@ -81,7 +130,12 @@ class RosterMissing(LookupError):
 
 
 def get_session(
-    business_unit: str, office: str, shift_date: date, shift_type: str, create: bool = True
+    business_unit: str,
+    office: str,
+    shift_date: date,
+    shift_type: str,
+    create: bool = True,
+    mode: str | None = None,
 ) -> Session:
     """Fetch the session for one tenant/office/shift, creating it if asked."""
     key = session_key(business_unit, office, shift_date, shift_type)
@@ -99,7 +153,13 @@ def get_session(
             raise RosterMissing(
                 f"no roster rows for {office} {shift_type} on {shift_date}"
             )
-        session = Session(replay=replay)
+        session = Session(replay=replay, mode=mode or MODE)
+        if session.live:
+            # A live board opens where the wall clock says it is, with the
+            # morning behind it already stepped through, so the alert history
+            # and the feed are the ones that actually built up.
+            session.speed = LIVE_SPEED
+            replay.seek(live_start(replay))
         SESSIONS[key] = session
     return session
 

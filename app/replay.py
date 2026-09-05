@@ -6,10 +6,17 @@ visible before it occurred. This module is that clock, and the discipline it
 enforces is the reason the demo is honest: every read goes through `now`, and
 `now` only moves forward.
 
-There is no live feed here and no pretence of one. What there is instead is a
-strict replay, which is the same thing from the reasoning core's point of view.
-Swapping this file for a real event consumer would leave every other module
-untouched, and that is the deployability claim in concrete form.
+The clock runs at two speeds and it is worth being exact about the difference.
+In `replay` mode it steps a finished morning at a multiple of real time, which
+is what a demo needs. In `live` mode it advances one shift-minute per wall-clock
+minute, so the board moves on its own with nobody pressing anything.
+
+Live mode is a real clock over recorded events, not a live feed, and the
+distinction matters: what is genuinely live is the clock, the reasoning and the
+narration, while the trips themselves are still the dataset's. Because every
+read is guarded by `now` and nothing downstream can tell where `now` came from,
+replacing this file with a consumer of real trip events changes the source of
+the rows and nothing else. That is the deployability claim in concrete form.
 
 Run:  uv run python -m app.replay --date 2026-06-11
 """
@@ -24,6 +31,8 @@ from typing import Any, Callable, Iterator
 
 from app.config import (
     BUSINESS_UNIT,
+    CLOCK_END,
+    CLOCK_START,
     DEMO_DATE,
     GRACE_MIN,
     OFFICE,
@@ -81,8 +90,8 @@ class Replay:
     office: str = OFFICE
     business_unit: str = BUSINESS_UNIT
     shift_type: str = SHIFT_TYPE
-    start: time = time(7, 30)
-    end: time = time(10, 0)
+    start: time = field(default_factory=lambda: time.fromisoformat(CLOCK_START))
+    end: time = field(default_factory=lambda: time.fromisoformat(CLOCK_END))
     tick_minutes: int = 1
 
     legs: list[dict] = field(default_factory=list)
@@ -190,6 +199,23 @@ class Replay:
                 )
 
         self.events.extend(fresh)
+        return fresh
+
+    def seek(self, target: datetime) -> list[Event]:
+        """Advance tick by tick up to `target`, returning everything new.
+
+        Stepping rather than jumping is the whole point. Alert lifecycle
+        depends on what was true a tick ago, so a clock set straight to 08:55
+        would produce alerts with no history and no hysteresis, and a feed with
+        no morning in it.
+        """
+        fresh: list[Event] = []
+        for tick in self.ticks():
+            if tick <= self.now:
+                continue
+            if tick > target:
+                break
+            fresh.extend(self.advance(tick))
         return fresh
 
     def run(self, on_tick: Callable[[datetime, list[Event]], None] | None = None) -> None:

@@ -34,6 +34,60 @@ MODEL = os.getenv("BESSEMER_MODEL", "openai/gpt-5.6-luna")
 Measured at roughly 4 seconds and a few hundred tokens per alert, which is
 affordable at two to five alerts per queue per shift."""
 
+LOCAL_PREFIXES = ("ollama/", "ollama_chat/")
+
+MODEL_KWARGS: dict[str, object] = {}
+if MODEL.startswith(LOCAL_PREFIXES):
+    # A local model defaults to a 4k window, and the shift board alone is about
+    # 1,600 tokens before the tool schemas and the instruction. Overflowing it
+    # does not raise: the server shifts the oldest tokens out, which are the
+    # instruction and the tool result, and the model then answers confidently
+    # from what is left. That is how a queue a tool reported at 67% came back
+    # described as fully staffed, which is the one mistake this system must
+    # never make. Sizing the window is therefore a correctness fix.
+    MODEL_KWARGS["num_ctx"] = int(os.getenv("BESSEMER_NUM_CTX", "16384"))
+
+
+# Which environment variables each provider needs before a call is worth making.
+# Each entry is a list of groups; at least one variable in every group must be
+# set. Azure needs a key *and* an endpoint, so it has two groups; Gemini accepts
+# either of two names for the same key, so it has one group with two options.
+CREDENTIALS: dict[str, list[tuple[str, ...]]] = {
+    "openai": [("OPENAI_API_KEY", "OPENAI_BASE_URL", "OPENAI_API_BASE")],
+    "azure": [
+        ("AZURE_API_KEY", "AZURE_OPENAI_API_KEY"),
+        ("AZURE_API_BASE", "AZURE_OPENAI_ENDPOINT"),
+    ],
+    "gemini": [("GEMINI_API_KEY", "GOOGLE_API_KEY")],
+    "anthropic": [("ANTHROPIC_API_KEY",)],
+}
+
+
+def missing_credentials() -> str | None:
+    """Why the model cannot be reached, or None if it is worth trying.
+
+    Checked before invoking rather than discovered by failing. LiteLLM's own
+    authentication error arrives about eight seconds and four retries later, on
+    every single call, and reads like a provider outage rather than an unset
+    variable. A board that quietly renders tables because nobody exported a key
+    is the one failure mode of this system that looks like success, so it is
+    worth naming precisely and early.
+    """
+    provider = MODEL.split("/", 1)[0] if "/" in MODEL else "openai"
+    groups = CREDENTIALS.get(provider)
+    if groups is None:
+        # Some other provider LiteLLM supports. It knows its own requirements.
+        return None
+    unset = [g for g in groups if not any(os.getenv(name) for name in g)]
+    if not unset:
+        return None
+    names = " and ".join(" or ".join(g) for g in unset)
+    return (
+        f"{names} is not set, so the {provider} model {MODEL!r} cannot be "
+        f"reached. Put it in agent/.env or export it, then restart. "
+        f"Set BESSEMER_MODEL to use a different provider."
+    )
+
 
 INSTRUCTION = """
 You are the shift-readiness assistant for a line manager at a 24/7 enterprise
@@ -154,7 +208,7 @@ discarded.
 # while it is at it.
 
 narrator_agent = Agent(
-    model=LiteLlm(model=MODEL),
+    model=LiteLlm(model=MODEL, **MODEL_KWARGS),
     name="shift_narrator",
     description="Turns one computed alert into a summary and sendable drafts.",
     instruction=NARRATOR_INSTRUCTION,
@@ -162,7 +216,7 @@ narrator_agent = Agent(
 )
 
 root_agent = Agent(
-    model=LiteLlm(model=MODEL),
+    model=LiteLlm(model=MODEL, **MODEL_KWARGS),
     name="shift_readiness",
     description=(
         "Watches an inbound shift's commutes, projects floor readiness and "

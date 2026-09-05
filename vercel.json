@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "app/api.py": {
+      "maxDuration": 60,
+      "excludeFiles": "{tests/**,docs/**,samples/**,Dictionary/**,deploy/**,MoveInSync*/**,**/*.md,**/*.excalidraw,**/*.mmd,**/*.svg,**/*.png}"
+    }
+  }
+}

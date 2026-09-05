@@ -22,6 +22,7 @@ Run:  uv run uvicorn app.api:app --reload
 from __future__ import annotations
 
 import asyncio
+import json
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
@@ -29,31 +30,69 @@ from typing import Any
 
 from pathlib import Path
 
-from fastapi import Body, Depends, FastAPI, HTTPException, Query
+from fastapi import Body, Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 
-from app.config import BUSINESS_UNIT, DEMO_DATE, OFFICE, SHIFT_TYPE
+import logging
+
+from app.config import (
+    AUTOSTART,
+    BUSINESS_UNIT,
+    CLOCK_END,
+    CLOCK_START,
+    DEMO_DATE,
+    JUMP_TO,
+    LIVE_RATE,
+    MODE,
+    OFFICE,
+    SHIFT_TYPE,
+)
 from app.core.alerts import Alert, Pathway, Status
 from app.core.remediation import record_cover
 from app.sessions import (
+    LIVE_SPEED,
     SESSIONS,
     RosterMissing,
     Session,
     SessionMissing,
     drop_session,
     get_session,
+    live_start,
     session_key,
 )
 from app import store
 
+log = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # A live board should be moving before anyone opens it, which means the
+    # clock cannot wait for the first HTTP request to start it. A missing
+    # roster must not take the process down with it: the API still needs to
+    # come up and say what is wrong.
+    if AUTOSTART or MODE == "live":
+        try:
+            await _autostart()
+        except Exception as exc:  # noqa: BLE001 - the API must boot regardless
+            log.warning("could not start the configured shift: %s", exc)
     yield
     for session in SESSIONS.values():
         if session.task:
             session.task.cancel()
+
+
+async def _autostart() -> None:
+    """Put the configured shift on the clock as the process comes up."""
+    session = get_session(
+        BUSINESS_UNIT, OFFICE, date.fromisoformat(DEMO_DATE), SHIFT_TYPE, mode=MODE
+    )
+    if session.live:
+        await _go_live(session)
+    log.info(
+        "shift %s started in %s mode at %s", session.key, session.mode, session.replay.now
+    )
 
 
 app = FastAPI(
@@ -101,13 +140,21 @@ class Scope:
     def session(self, create: bool = True) -> Session:
         """The running replay for this scope, as an HTTP-shaped error if absent."""
         try:
-            return get_session(
+            session = get_session(
                 self.business_unit, self.office, self.shift_date, self.shift_type, create
             )
         except RosterMissing as exc:
             raise HTTPException(404, str(exc)) from exc
         except SessionMissing as exc:
             raise HTTPException(404, str(exc)) from exc
+        # Serverless hosts drop the background ticker when the request ends.
+        # Catch up from wall time on the next read so "Run the morning" still moves.
+        if session.running and session.started_wall is not None:
+            target = min(session.target_clock(), session.replay.clock_end)
+            if target > session.replay.now:
+                session.replay.seek(target)
+                session.persist()
+        return session
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -141,12 +188,7 @@ async def start_replay(
         if target < session.replay.now:
             # The clock only moves forward, so rewinding means starting over.
             session = _recreate(session)
-        for tick in session.replay.ticks():
-            if tick <= session.replay.now:
-                continue
-            if tick > target:
-                break
-            session.replay.advance(tick)
+        session.replay.seek(target)
         session.persist()
         # A jump lands on a situation worth explaining as often as the clock
         # does. Without this, "Jump to 08:55" showed the grey fallback until
@@ -165,19 +207,51 @@ async def start_replay(
 
 
 async def _run(session: Session) -> None:
-    """Advance the clock in the background, narrating what deserves it."""
+    """Advance the clock in the background, narrating what deserves it.
+
+    Where the clock should be is derived from elapsed wall time rather than
+    accumulated sleeps, so a tick held up by a slow write or a busy event loop
+    is caught up instead of lost. At 60x that distinction is cosmetic. In live
+    mode it is the difference between a clock and an approximation of one, and a
+    board that drifts a minute behind the floor every few minutes is worse than
+    no board at all.
+    """
     try:
-        for tick in session.replay.ticks():
-            if tick <= session.replay.now:
-                continue
-            session.replay.advance(tick)
-            session.persist()
-            await _narrate_pending(session)
-            await asyncio.sleep(session.replay.tick_minutes / session.speed)
+        while session.replay.now < session.replay.clock_end:
+            target = min(session.target_clock(), session.replay.clock_end)
+            if target > session.replay.now:
+                session.replay.seek(target)
+                session.persist()
+                await _narrate_pending(session)
+            # Poll faster than a tick, but never slower than once a second, so
+            # a live clock lands on the minute rather than up to a minute late.
+            await asyncio.sleep(min(1.0, session.replay.tick_minutes / session.speed))
     except asyncio.CancelledError:
         pass
     finally:
         session.running = False
+
+
+async def _go_live(session: Session) -> Session:
+    """Run this shift's clock at real time from wherever the wall clock says.
+
+    This is the switch a deployment ships with rather than a demo control: one
+    shift-minute per wall-clock minute, nobody pressing anything. Nothing
+    downstream changes, because nothing downstream reads anything but `now`.
+    """
+    session.mode = "live"
+    session.speed = LIVE_SPEED
+    anchor = live_start(session.replay)
+    if anchor > session.replay.now:
+        session.replay.seek(anchor)
+        session.persist()
+        await _narrate_pending(session)
+    if not session.running:
+        session.running = True
+        session.started_wall = datetime.now()
+        session.started_clock = session.replay.now
+        session.task = asyncio.create_task(_run(session))
+    return session
 
 
 _narrating: set[str] = set()
@@ -246,6 +320,26 @@ def _recreate(session: Session) -> Session:
     return fresh
 
 
+@app.post("/replay/live", tags=["replay"])
+async def go_live(scope: Scope = Depends()) -> dict[str, Any]:
+    """Switch this shift to a real-time clock and leave it running.
+
+    Replay and live differ in one thing only, which is where `now` comes from.
+    Everything that reads the shift is guarded by `now` and cannot tell the
+    difference, so this is the same seam a consumer of real trip events would
+    occupy. What is genuinely live here is the clock, the reasoning and the
+    narration; the trips themselves are still the dataset's.
+    """
+    session = await _go_live(scope.session())
+    return {
+        "status": "live",
+        "mode": session.mode,
+        "clock": session.replay.now.isoformat(),
+        "rate": LIVE_RATE,
+        "ends": session.replay.clock_end.isoformat(),
+    }
+
+
 @app.post("/replay/pause", tags=["replay"])
 async def pause_replay(scope: Scope = Depends()) -> dict[str, Any]:
     """Stop the clock where it is. Resume with /replay/start.
@@ -301,13 +395,7 @@ async def step_replay(
 ) -> dict[str, Any]:
     """Advance the clock by hand. Useful when presenting."""
     session = scope.session()
-    target = session.replay.now + timedelta(minutes=minutes)
-    for tick in session.replay.ticks():
-        if tick <= session.replay.now:
-            continue
-        if tick > target:
-            break
-        session.replay.advance(tick)
+    session.replay.seek(session.replay.now + timedelta(minutes=minutes))
     session.persist()
     return {"status": "stepped", "clock": session.replay.now.isoformat()}
 
@@ -322,6 +410,7 @@ async def board(scope: Scope = Depends()) -> dict[str, Any]:
     payload = session.replay.board()
     payload["running"] = session.running
     payload["speed"] = session.speed
+    payload["mode"] = session.mode
     return payload
 
 
@@ -592,12 +681,16 @@ async def timeline_at(
 
 
 @app.post("/chat", tags=["agent"])
-async def chat(body: dict = Body(...), scope: Scope = Depends()) -> dict[str, Any]:
+async def chat(
+    request: Request,
+    body: dict = Body(...),
+    stream: bool = Query(False),
+    scope: Scope = Depends(),
+):
     """Ask the agent about the shift.
 
-    Shares one conversation per shift-day with the proactive alerts, so a
-    manager asking "why is billing short" gets an answer from something that
-    already wrote the alert rather than from a stranger.
+    Chat keeps a persistent per-shift conversation. Pass stream=1 (or Accept
+    text/event-stream) to receive tokens as they are generated.
     """
     from agent import runner as agent_runner
 
@@ -607,8 +700,17 @@ async def chat(body: dict = Body(...), scope: Scope = Depends()) -> dict[str, An
 
     session = scope.session()
     session.persist()
-    answer = await agent_runner.ask(session, text)
-    return {"clock": session.replay.now.isoformat(), **answer}
+    clock = session.replay.now.isoformat()
+    wants_stream = stream or "text/event-stream" in request.headers.get("accept", "")
+    if not wants_stream:
+        answer = await agent_runner.ask(session, text)
+        return {"clock": clock, **answer}
+
+    async def events():
+        async for item in agent_runner.ask_stream(session, text):
+            yield f"data: {json.dumps({'clock': clock, **item})}\n\n"
+
+    return StreamingResponse(events(), media_type="text/event-stream")
 
 
 @app.post("/alerts/{alert_id}/narrate", tags=["agent"])
@@ -650,12 +752,57 @@ async def board_page() -> FileResponse:
     return FileResponse(WEB, media_type="text/html")
 
 
+@app.get("/config", tags=["ops"])
+async def config() -> dict[str, Any]:
+    """What this deployment is pointed at, for the board to read on load.
+
+    The board used to hard-code the site, the shift and the width of the
+    morning, which made the multi-tenancy claim true of the API and false of the
+    only thing anybody looks at. It asks here instead, so pointing this at
+    another tenant stays a config change.
+    """
+    from agent.agent import MODEL, missing_credentials
+
+    return {
+        "business_unit": BUSINESS_UNIT,
+        "office": OFFICE,
+        "shift_type": SHIFT_TYPE,
+        "shift_date": DEMO_DATE,
+        "mode": MODE,
+        "clock_start": CLOCK_START,
+        "clock_end": CLOCK_END,
+        "live_rate": LIVE_RATE,
+        "jump_to": JUMP_TO,
+        "model": MODEL,
+        "model_ready": missing_credentials() is None,
+    }
+
+
 @app.get("/health", tags=["ops"])
 async def health() -> dict[str, Any]:
+    """Whether this process can do its job, including the part that needs a key.
+
+    The narrative layer degrades silently by design: if the model cannot be
+    reached the board still renders every computed number, which is correct
+    behaviour and indistinguishable from success at a glance. So the one thing
+    worth reporting loudly here is whether the model is actually reachable.
+    """
+    from agent.agent import MODEL, missing_credentials
+
+    missing = missing_credentials()
     return {
         "status": "ok",
+        "mode": MODE,
+        "model": MODEL,
+        "model_ready": missing is None,
+        "model_error": missing,
         "sessions": [
-            {"key": k, "clock": s.replay.now.isoformat(), "running": s.running}
+            {
+                "key": k,
+                "clock": s.replay.now.isoformat(),
+                "running": s.running,
+                "mode": s.mode,
+            }
             for k, s in SESSIONS.items()
         ],
     }

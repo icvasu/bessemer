@@ -78,6 +78,12 @@ def test_an_unknown_alert_id_is_refused_with_the_known_ones(shift):
     assert "not part of this shift" in result["error"]
 
 
+def test_alert_lookup_accepts_string_ids(shift):
+    """Local models send tool arguments as strings; the lookup must still hit."""
+    alert_id = shift.id_for("billing")
+    assert tools.get_alert(str(alert_id))["status"] == "success"
+
+
 def test_an_unknown_queue_is_refused_with_the_real_ones(shift):
     result = tools.get_cover_candidates("payroll")
     assert result["status"] == "error"
@@ -168,6 +174,47 @@ def test_composing_saves_the_narrative_and_drafts(shift):
     stored = query("SELECT narrative, drafts FROM shift_alerts WHERE id = %s", (alert_id,))[0]
     assert stored["narrative"].startswith("Billing is four short")
     assert "EARLY_SHIFT_COVER" in stored["drafts"]
+
+
+def test_an_invented_figure_is_refused_and_nothing_is_saved(shift):
+    """The product claim is that the model cannot state a figure the tools did
+    not return. The instruction asks for that; this is what makes it true.
+
+    The failure this guards is the worst one available to this system: a
+    hallucinated service level renders in the same typeface as a computed one,
+    and the manager forwards it to their director unable to tell them apart.
+    """
+    alert_id = shift.id_for("billing")
+    before = query("SELECT narrative FROM shift_alerts WHERE id = %s", (alert_id,))[0]
+
+    result = tools.compose_alert(
+        alert_id,
+        narrative="Billing is short; service level is 4242% and it costs 9999.",
+    )
+    assert result["status"] == "error"
+    assert "4242" in result["error"] and "9999" in result["error"]
+
+    after = query("SELECT narrative FROM shift_alerts WHERE id = %s", (alert_id,))[0]
+    assert after["narrative"] == before["narrative"], "a refused summary must not be saved"
+
+
+def test_a_grounded_summary_still_saves(shift):
+    """The other half of the guard: figures taken from the alert must pass, or
+    the check would simply delete the narrative layer."""
+    alert_id = shift.id_for("billing")
+    _, alert = shift.alert_for(alert_id)
+    payload = alert.for_narrative()
+
+    result = tools.compose_alert(
+        alert_id,
+        narrative=(
+            f"Billing Support is {payload['agents_missing']} short at "
+            f"{payload['coverage_pct']}% coverage, and service level is "
+            f"{payload['service_level_now_pct']}%."
+        ),
+    )
+    assert result["status"] == "success", result.get("error")
+    assert alert.narrative
 
 
 def test_a_draft_for_an_option_that_is_not_offered_is_discarded(shift):

@@ -1,0 +1,31 @@
+flowchart LR
+  classDef ui fill:#dbeafe,stroke:#1e40af,color:#1e3a5f
+  classDef api fill:#93c5fd,stroke:#1e3a5f,color:#1e3a5f
+  classDef det fill:#a7f3d0,stroke:#047857,color:#064e3b
+  classDef llm fill:#ddd6fe,stroke:#6d28d9,color:#4c1d95
+  classDef data fill:#fed7aa,stroke:#c2410c,color:#7c2d12
+
+  UI["Shift board<br/>queues · alerts · chat · story"]:::ui
+  API["FastAPI :8000"]:::api
+
+  subgraph DET["Deterministic core — Python, ~15ms"]
+    CLK["Replay clock"]:::det
+    MATH["Who is late · how short<br/>service level · what to do"]:::det
+  end
+
+  subgraph LLM["LLM — only when needed"]
+    NAR["Narrator · 2 tools"]:::llm
+    AST["Chat · 7 tools"]:::llm
+  end
+
+  PG[("Postgres<br/>trips · roster · alerts")]:::data
+
+  UI -->|watch / act / ask| API
+  API --> CLK
+  CLK --> MATH
+  PG --> CLK
+  MATH -->|save| PG
+  MATH -->|situation changed| NAR
+  API -->|question| AST
+  NAR -->|summary + drafts| API
+  AST -->|answer| API

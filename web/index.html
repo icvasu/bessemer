@@ -67,6 +67,17 @@
   .wordmark .product { color: var(--ink-3); font-weight: 500; }
   .top .site { margin-left: auto; color: var(--ink-2); white-space: nowrap; }
   .top .site strong { color: var(--ink); font-weight: 500; }
+  .pill {
+    font-size: 11.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
+    padding: 2px 7px; border-radius: 999px; margin-left: 6px; vertical-align: 1px;
+  }
+  .pill.live { background: var(--red-tint); color: var(--red); }
+  .pill.live::before {
+    content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--red); margin-right: 5px; vertical-align: 0;
+    animation: pulse 1.6s infinite;
+  }
+  @media (prefers-reduced-motion: reduce) { .pill.live::before { animation: none; } }
 
   /* ------------------------------------------------------------ layout */
   .page {
@@ -302,7 +313,7 @@
 
 <header class="top">
   <div class="wordmark"><span class="mark"></span>MoveInSync <span class="product">ION</span></div>
-  <div class="site" id="site"><strong>Clearwater Campus</strong> &nbsp; 09:00 shift</div>
+  <div class="site" id="site">Loading</div>
 </header>
 
 <main class="page">
@@ -316,6 +327,7 @@
       </div>
       <div class="controls">
         <button class="btn" id="play">Run the morning</button>
+        <button class="btn quiet" id="live" title="Advance the clock at real time, one minute per minute">Go live</button>
         <button class="btn quiet" id="jump">Jump to 08:55</button>
         <button class="btn quiet" id="reset">Start over</button>
         <div class="speed" id="speed">
@@ -340,7 +352,7 @@
         <div class="track">
           <input type="range" id="scrub" min="0" max="150" value="0" step="1" aria-label="Time of morning">
           <div class="marks" id="marks"></div>
-          <div class="ticks"><span>07:30</span><span>08:00</span><span>08:30</span><span>09:00</span><span>09:30</span><span>10:00</span></div>
+          <div class="ticks" id="ticks"><span>07:30</span><span>08:00</span><span>08:30</span><span>09:00</span><span>09:30</span><span>10:00</span></div>
         </div>
         <div class="landmark">
           <span class="now" id="story-now">07:30</span>
@@ -355,7 +367,7 @@
 
     <div class="queues" id="queues"></div>
 
-    <h2>Everyone rostered for 09:00</h2>
+    <h2 id="riders-heading">Everyone rostered</h2>
     <div class="riders-wrap">
       <table>
         <thead>
@@ -401,12 +413,35 @@
   const events = [];
   const sentLog = [];
 
+  // The tenant, site, shift and date this page is looking at. Read off the page
+  // URL so a link can point the board at any of them, and left empty otherwise
+  // so the server's configured default applies. Every endpoint is already
+  // scoped by these four; sending them is what makes the board honour it rather
+  // than quietly showing whatever the server was started with.
+  const params = new URLSearchParams(location.search);
+  const SCOPE_KEYS = ["business_unit", "office", "shift_date", "shift_type"];
+  const scope = new URLSearchParams();
+  for (const k of SCOPE_KEYS) if (params.get(k)) scope.set(k, params.get(k));
+  const scoped = (path) => {
+    const q = scope.toString();
+    if (!q) return path;
+    return path + (path.includes("?") ? "&" : "?") + q;
+  };
+
+  // Set from /config on load, so the width of the morning is the server's to
+  // decide. The story slider and the clock arithmetic both read these.
+  let START_MIN = 7 * 60 + 30;
+  let END_MIN = 10 * 60;
+  let SPAN = END_MIN - START_MIN;
+  let jumpTo = "08:55";
+
   // ------------------------------------------------------------ helpers
   const hhmm = (iso) => iso ? iso.slice(11, 16) : "";
   const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
   const toast = (msg) => { const t = $("toast"); t.textContent = msg; t.classList.add("show"); setTimeout(() => t.classList.remove("show"), 2400); };
-  const post = (path) => fetch(API + path, { method: "POST" }).then((r) => r.json());
-  const get = (path) => fetch(API + path).then((r) => r.json());
+  const post = (path) => fetch(API + scoped(path), { method: "POST" }).then((r) => r.json());
+  const get = (path) => fetch(API + scoped(path)).then((r) => r.json());
+  const toMin = (t) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
 
   const STATE_WORD = {
     SCHEDULED: ["hollow", "Not due yet"],
@@ -435,8 +470,13 @@
   function renderBoard(b) {
     running = b.running;
     $("clock").textContent = b.time;
-    $("site").innerHTML = `<strong>${esc(b.office)}</strong> &nbsp; ${esc(b.shift_type)} shift, ${esc(b.shift_date)}`;
-    $("play").textContent = running ? "Pause" : (b.time === "07:30" ? "Run the morning" : "Resume");
+    const live = b.mode === "live";
+    $("site").innerHTML =
+      `<strong>${esc(b.office)}</strong> &nbsp; ${esc(b.shift_type)} shift, ${esc(b.shift_date)}`
+      + (live ? ` <span class="pill live">live</span>` : ``);
+    $("play").textContent = running ? "Pause" : (b.time === minToHHMM(0) ? "Run the morning" : "Resume");
+    $("live").hidden = live;
+    $("riders-heading").textContent = `Everyone rostered for ${b.shift_type}`;
 
     const t = b.totals;
     const cls = t.coverage_pct >= 90 ? "" : t.coverage_pct >= 75 ? "warn" : "bad";
@@ -643,8 +683,49 @@
     think.className = "msg bot thinking"; think.textContent = "Checking the board";
     thread.appendChild(think); thread.scrollTop = thread.scrollHeight;
     try {
-      const r = await fetch(API + "/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: q }) }).then((x) => x.json());
-      think.className = "msg bot"; think.textContent = r.reply || r.detail || "No answer came back.";
+      const res = await fetch(API + scoped("/chat?stream=1"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Accept": "text/event-stream" },
+        body: JSON.stringify({ text: q }),
+      });
+      const ctype = res.headers.get("content-type") || "";
+      if (!res.body || !ctype.includes("text/event-stream")) {
+        const r = await res.json();
+        think.className = "msg bot";
+        think.textContent = r.reply || r.detail || "No answer came back.";
+      } else {
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = "", reply = "";
+        think.className = "msg bot";
+        think.textContent = "";
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          const parts = buf.split("\n\n");
+          buf = parts.pop() || "";
+          for (const block of parts) {
+            const line = block.split("\n").find((l) => l.startsWith("data: "));
+            if (!line) continue;
+            let item;
+            try { item = JSON.parse(line.slice(6)); } catch { continue; }
+            if (item.type === "status" && !reply) {
+              think.className = "msg bot thinking";
+              think.textContent = item.text || "Checking the board";
+            } else if (item.type === "delta" && item.text) {
+              think.className = "msg bot";
+              reply += item.text;
+              think.textContent = reply;
+            } else if (item.type === "done" || item.type === "error") {
+              think.className = "msg bot";
+              think.textContent = item.reply || reply || "No answer came back.";
+            }
+            thread.scrollTop = thread.scrollHeight;
+          }
+        }
+        if (!think.textContent) think.textContent = "No answer came back.";
+      }
     } catch (e) {
       think.className = "msg bot"; think.textContent = "Could not reach the assistant. The board is still live.";
     }
@@ -653,12 +734,11 @@
   });
 
   // ------------------------------------------------------------- story
-  const START_MIN = 7 * 60 + 30;
   let story = false;
   let landmarks = [];
   let storyTime = "07:30";
   const minToHHMM = (m) => `${String(Math.floor((START_MIN + m) / 60)).padStart(2, "0")}:${String((START_MIN + m) % 60).padStart(2, "0")}`;
-  const hhmmToMin = (t) => (Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5))) - START_MIN;
+  const hhmmToMin = (t) => toMin(t) - START_MIN;
 
   function setStoryMode(on) {
     story = on;
@@ -676,7 +756,7 @@
 
   function renderMarks() {
     $("marks").innerHTML = landmarks.map((m) => {
-      const pct = (hhmmToMin(m.time) / 150) * 100;
+      const pct = (hhmmToMin(m.time) / SPAN) * 100;
       return `<i class="${m.kind}" style="left:${pct}%" title="${esc(m.time)} ${esc(m.label)}"></i>`;
     }).join("");
   }
@@ -718,7 +798,7 @@
       const st = await get(`/timeline/status`);
       if (st.error) { clearInterval(poll); state.textContent = `Failed: ${st.error}`; btn.disabled = false; return; }
       if (st.building) {
-        state.textContent = `Capturing ${minToHHMM(Math.min(150, st.ticks_done))} of 10:00, ${st.narrated} alert${st.narrated === 1 ? "" : "s"} written up`;
+        state.textContent = `Capturing ${minToHHMM(Math.min(SPAN, st.ticks_done))} of ${minToHHMM(SPAN)}, ${st.narrated} alert${st.narrated === 1 ? "" : "s"} written up`;
         return;
       }
       if (st.ready) {
@@ -731,7 +811,7 @@
         timelineReady = true;
         $("story-rebuild").hidden = false;
         setStoryMode(true);
-        showStoryAt("07:30");
+        showStoryAt(minToHHMM(0));
       }
     }, 1000);
   }
@@ -743,7 +823,7 @@
   // mid-sentence.
   let timelineReady = false;
   $("story-prepare").addEventListener("click", () => {
-    if (timelineReady) { setStoryMode(true); showStoryAt("07:30"); }
+    if (timelineReady) { setStoryMode(true); showStoryAt(minToHHMM(0)); }
     else prepareStory();
   });
   $("story-rebuild").addEventListener("click", () => {
@@ -760,15 +840,17 @@
   });
 
   // If a timeline already exists on the server, offer it straight away.
-  get(`/timeline/status`).then((st) => {
-    if (st.ready) {
-      landmarks = st.landmarks; renderMarks();
-      timelineReady = true;
-      $("story-state").textContent = `${landmarks.length} landmarks ready from an earlier build.`;
-      $("story-prepare").textContent = "Open the story";
-      $("story-rebuild").hidden = false;
-    }
-  }).catch(() => {});
+  function checkTimeline() {
+    return get(`/timeline/status`).then((st) => {
+      if (st.ready) {
+        landmarks = st.landmarks; renderMarks();
+        timelineReady = true;
+        $("story-state").textContent = `${landmarks.length} landmarks ready from an earlier build.`;
+        $("story-prepare").textContent = "Open the story";
+        $("story-rebuild").hidden = false;
+      }
+    }).catch(() => {});
+  }
 
   // ---------------------------------------------------------- controls
   $("play").addEventListener("click", async () => {
@@ -779,7 +861,12 @@
     }
     refresh();
   });
-  $("jump").addEventListener("click", async () => { await post(`/replay/start?to=08:55`); refresh(); });
+  $("jump").addEventListener("click", async () => { await post(`/replay/start?to=${encodeURIComponent(jumpTo)}`); refresh(); });
+  $("live").addEventListener("click", async () => {
+    const r = await post(`/replay/live`);
+    toast(r.status === "live" ? `Live from ${hhmm(r.clock)}, real time` : "Could not go live");
+    refresh();
+  });
   $("reset").addEventListener("click", async () => {
     await post(`/replay/reset?clear_cover=true`);
     events.length = 0; lastEvent = null;
@@ -807,7 +894,36 @@
       $("subline").textContent = "Start it with: uv run uvicorn app.api:app --port 8000";
     }
   }
-  refresh();
+  // Ask the server what it is pointed at before the first paint, so the slider,
+  // the shortcut and the headings describe this deployment rather than the one
+  // this file happened to be written against.
+  async function boot() {
+    try {
+      const cfg = await get("/config");
+      START_MIN = toMin(cfg.clock_start);
+      END_MIN = toMin(cfg.clock_end);
+      SPAN = Math.max(1, END_MIN - START_MIN);
+      jumpTo = cfg.jump_to || jumpTo;
+      storyTime = minToHHMM(0);
+      $("scrub").max = String(SPAN);
+      $("jump").textContent = `Jump to ${jumpTo}`;
+      $("clock").textContent = minToHHMM(0);
+      $("ticks").innerHTML = Array.from({ length: 6 }, (_, i) =>
+        `<span>${minToHHMM(Math.round((SPAN * i) / 5))}</span>`).join("");
+      $("story-state").textContent =
+        `Not prepared yet. This captures every minute from ${minToHHMM(0)} to `
+        + `${minToHHMM(SPAN)} and writes up each alert as it opens.`;
+      if (!cfg.model_ready) {
+        toast("No model configured: narratives fall back to computed summaries.");
+      }
+    } catch (e) {
+      // Defaults stand; refresh reports an unreachable API on its own.
+    }
+    await refresh();
+    checkTimeline();
+  }
+
+  boot();
   setInterval(() => { if (running && !story) refresh(); }, 1000);
   setInterval(() => { if (!running && !story) refresh(); }, 6000);
 })();

@@ -59,4 +59,4 @@ slice trip_alerts "SELECT a.* FROM trip_alerts a
 psql "$REMOTE" -v ON_ERROR_STOP=1 -q \
     -c "SELECT setval('rider_legs_id_seq', COALESCE((SELECT max(id) FROM rider_legs), 1))"
 
-echo "==> done. Restart the Render web service to drop stale pooled connections."
+echo "==> done. Redeploy or restart the web service to drop stale pooled connections."

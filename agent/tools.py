@@ -22,12 +22,49 @@ it can set.
 
 from __future__ import annotations
 
+import json
+import re
 from typing import Any
 
 from app.core.context import context_facts
 from app.core.remediation import candidates as find_candidates
 from app.sessions import SessionMissing, current_session
 from app import store
+
+_NUMBER = re.compile(r"\d+(?:[.,]\d+)?")
+
+
+def _ungrounded_figures(text: str, payload: dict[str, Any]) -> list[str]:
+    """Figures in `text` that were not in what the model was handed.
+
+    The instruction tells the model never to state a number the tools did not
+    return. This is where that becomes true rather than requested. A prompt rule
+    holds most of the time, and "most of the time" is not a property worth
+    offering a manager who forwards these figures to their own director.
+
+    Rejecting is deliberately the safe direction. A false positive costs the
+    prose and the board falls back to the computed summary, which is correct but
+    plainer. A false negative puts an invented service level on screen in the
+    same typeface as a real one, and nobody downstream can tell which is which.
+    """
+    allowed: set[str] = set()
+    for token in _NUMBER.findall(json.dumps(payload, default=str)):
+        plain = token.replace(",", "")
+        allowed.add(plain)
+        # 67.0 and 67 are the same claim, as are 1,700 and 1700.
+        allowed.add(plain.split(".")[0])
+        try:
+            allowed.add(str(round(float(plain))))
+        except ValueError:
+            pass
+
+    invented = []
+    for token in _NUMBER.findall(text):
+        plain = token.replace(",", "")
+        if plain in allowed or plain.split(".")[0] in allowed:
+            continue
+        invented.append(token)
+    return invented
 
 
 def _fail(message: str) -> dict[str, Any]:
@@ -252,6 +289,19 @@ def compose_alert(
     }
     drafts = {k: v for k, v in proposed.items() if v and k in offered}
     ignored = sorted(k for k, v in proposed.items() if v and k not in offered)
+
+    # Check the prose against the figures the model was actually given, before
+    # any of it is saved. The drafts are checked with it: a cover request naming
+    # an overtime cost nobody computed is forwarded to a real person.
+    grounding = alert.for_narrative() | {"alert_id": alert_id}
+    invented = _ungrounded_figures(" ".join([narrative, *drafts.values()]), grounding)
+    if invented:
+        return _fail(
+            f"nothing was saved: the text states {', '.join(sorted(set(invented)))}, "
+            f"which get_alert did not return. Every figure must come from "
+            f"get_alert. Rewrite it using those figures, or leave the figure out "
+            f"of the sentence, and call compose_alert again."
+        )
 
     alert.narrative = narrative.strip()
     alert.drafts = drafts

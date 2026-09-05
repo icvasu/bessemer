@@ -21,19 +21,45 @@ PGUSER = os.getenv("PGUSER", "postgres")
 PGPASSWORD = os.getenv("PGPASSWORD", "")
 PGDATABASE = os.getenv("PGDATABASE", "bessemer")
 
-DSN = os.getenv(
-    "BESSEMER_DSN",
-    f"host={PGHOST} port={PGPORT} user={PGUSER} dbname={PGDATABASE}"
-    + (f" password={PGPASSWORD}" if PGPASSWORD else ""),
-)
+# Vercel sets this on every function. A long-lived Render process leaves it unset.
+SERVERLESS = bool(os.getenv("VERCEL"))
+
+
+def _libpq_dsn() -> str:
+    """Prefer an explicit DSN, then the URL Neon/Vercel inject, then PG* parts."""
+    if explicit := os.getenv("BESSEMER_DSN"):
+        return explicit
+    if url := os.getenv("DATABASE_URL_UNPOOLED") or os.getenv("DATABASE_URL"):
+        return url
+    ssl = "" if PGHOST in {"127.0.0.1", "localhost"} else " sslmode=require"
+    password = f" password={PGPASSWORD}" if PGPASSWORD else ""
+    return (
+        f"host={PGHOST} port={PGPORT} user={PGUSER} dbname={PGDATABASE}"
+        f"{password}{ssl}"
+    )
+
+
+def _sqlalchemy_url() -> str:
+    if explicit := os.getenv("BESSEMER_SQLALCHEMY_URL"):
+        return explicit
+    raw = os.getenv("DATABASE_URL_UNPOOLED") or os.getenv("DATABASE_URL")
+    if raw:
+        if raw.startswith("postgres://"):
+            raw = "postgresql://" + raw[len("postgres://") :]
+        if raw.startswith("postgresql://"):
+            return "postgresql+psycopg://" + raw[len("postgresql://") :]
+        return raw
+    return (
+        f"postgresql+psycopg://{PGUSER}"
+        + (f":{PGPASSWORD}" if PGPASSWORD else "")
+        + f"@{PGHOST}:{PGPORT}/{PGDATABASE}"
+    )
+
+
+DSN = _libpq_dsn()
 
 # SQLAlchemy-style URL, for ADK's DatabaseSessionService.
-SQLALCHEMY_URL = os.getenv(
-    "BESSEMER_SQLALCHEMY_URL",
-    f"postgresql+psycopg://{PGUSER}"
-    + (f":{PGPASSWORD}" if PGPASSWORD else "")
-    + f"@{PGHOST}:{PGPORT}/{PGDATABASE}",
-)
+SQLALCHEMY_URL = _sqlalchemy_url()
 
 # --- the slice we build for -------------------------------------------------
 #
@@ -46,6 +72,43 @@ OFFICE = os.getenv("BESSEMER_OFFICE", "Clearwater Campus")
 SHIFT_TYPE = os.getenv("BESSEMER_SHIFT", "09:00")
 COVER_SHIFT_TYPE = os.getenv("BESSEMER_COVER_SHIFT", "08:30")
 DEMO_DATE = os.getenv("BESSEMER_DEMO_DATE", "2026-06-11")
+
+# --- the clock --------------------------------------------------------------
+#
+# The window the board watches, and how the clock inside it moves.
+#
+# `replay` steps a finished morning at a multiple of real time, which is what a
+# demo needs. `live` advances at real time, which is what a deployment does: one
+# shift-minute per wall-clock minute, so the board moves on its own and nobody
+# presses anything. The difference is entirely in how `now` is derived; every
+# read downstream is guarded by `now` either way, so nothing else changes. That
+# is the same seam a real trip-event consumer would slot into.
+
+MODE = os.getenv("BESSEMER_MODE", "replay")
+"""`replay` or `live`. See app/replay.py for what the clock guarantees."""
+
+CLOCK_START = os.getenv("BESSEMER_CLOCK_START", "07:30")
+CLOCK_END = os.getenv("BESSEMER_CLOCK_END", "10:00")
+"""The window the board watches, HH:MM. Wide enough to contain the commute and
+the shift start; narrow enough that a tick is cheap."""
+
+LIVE_ANCHOR = os.getenv("BESSEMER_LIVE_ANCHOR", "08:40")
+"""Where the clock starts in live mode. `now` maps the wall clock's own
+time-of-day onto the shift date, which is what a live feed would give you;
+an HH:MM pins the start instead, so a demo opens just before the crunch
+rather than wherever the presenter's afternoon happens to fall."""
+
+LIVE_RATE = float(os.getenv("BESSEMER_LIVE_RATE", "1.0"))
+"""Shift minutes per real minute in live mode. 1.0 is real time."""
+
+JUMP_TO = os.getenv("BESSEMER_JUMP_TO", "08:55")
+"""The minute the board's shortcut button opens on: the worst of the morning for
+this dataset. A presenter should not have to wait two minutes for the clock to
+reach the interesting part, and the interesting part moves with the data."""
+
+AUTOSTART = os.getenv("BESSEMER_AUTOSTART", "0") != "0"
+"""Start the configured shift's clock when the process boots, so a live board
+is moving before anyone opens it. On by default when MODE is live."""
 
 # --- the operating model ----------------------------------------------------
 #

@@ -12,7 +12,7 @@ from fastapi.testclient import TestClient
 
 from app import store
 from app.api import SESSIONS, app
-from app.config import DEMO_DATE, OFFICE, SHIFT_TYPE
+from app.config import DEMO_DATE, OFFICE, SHIFT_TYPE, _libpq_dsn, _sqlalchemy_url
 from app.db import query
 
 
@@ -36,6 +36,15 @@ def at(client: TestClient, hhmm: str):
     return client.post("/replay/start", params={"to": hhmm})
 
 
+def test_dsn_reads_the_url_neon_injects(monkeypatch):
+    monkeypatch.setenv("DATABASE_URL_UNPOOLED", "postgresql://u:p@neon/db")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://pooled")
+    monkeypatch.delenv("BESSEMER_DSN", raising=False)
+    monkeypatch.delenv("BESSEMER_SQLALCHEMY_URL", raising=False)
+    assert _libpq_dsn() == "postgresql://u:p@neon/db"
+    assert _sqlalchemy_url() == "postgresql+psycopg://u:p@neon/db"
+
+
 # ------------------------------------------------------------------- control
 
 
@@ -56,6 +65,27 @@ def test_stepping_advances_by_hand(client):
     at(client, "08:30")
     client.post("/replay/step", params={"minutes": 25})
     assert client.get("/board").json()["time"] == "08:55"
+
+
+def test_board_catches_up_after_the_background_clock_dies(client):
+    """Vercel kills the background ticker when the request ends. The next
+    board read must still move the clock from elapsed wall time."""
+    from datetime import date, datetime, timedelta
+
+    from app.config import BUSINESS_UNIT
+    from app.sessions import get_session
+
+    client.post("/replay/start", params={"speed": 60})
+    session = get_session(
+        BUSINESS_UNIT, OFFICE, date.fromisoformat(DEMO_DATE), SHIFT_TYPE, create=False
+    )
+    if session.task:
+        session.task.cancel()
+    started = session.replay.now
+    session.started_wall = datetime.now() - timedelta(seconds=2)
+    session.started_clock = started
+    board = client.get("/board").json()
+    assert board["time"] >= (started + timedelta(minutes=2)).strftime("%H:%M")
 
 
 def test_rewinding_starts_the_morning_over(client):
@@ -265,3 +295,22 @@ def test_pause_holds_the_clock_and_resume_continues_from_it(client):
     assert resumed["status"] == "running"
     assert resumed["clock"] == held_at, "resume must continue from the paused tick"
     client.post("/replay/pause")
+
+
+def test_chat_streams_tokens_as_they_arrive(client, monkeypatch):
+    """The board paints the answer as the model writes it, not after the wait."""
+    at(client, "08:55")
+
+    async def fake_stream(session, text, user_id="line_manager"):
+        yield {"type": "status", "text": "Checking get alert"}
+        yield {"type": "delta", "text": "Billing "}
+        yield {"type": "delta", "text": "is short."}
+        yield {"type": "done", "reply": "Billing is short.", "usage": {}}
+
+    monkeypatch.setattr("agent.runner.ask_stream", fake_stream)
+    response = client.post("/chat", params={"stream": True}, json={"text": "how short?"})
+    assert response.headers["content-type"].startswith("text/event-stream")
+    body = response.text
+    assert "Checking get alert" in body
+    assert "Billing is short" in body
+    assert '"type": "delta"' in body

@@ -21,7 +21,7 @@ import psycopg
 from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
 
-from app.config import DSN
+from app.config import DSN, SERVERLESS
 
 _pool: ConnectionPool | None = None
 
@@ -32,7 +32,9 @@ def pool() -> ConnectionPool:
     if _pool is None:
         _pool = ConnectionPool(
             DSN,
-            min_size=1,
+            # Vercel functions are request-scoped; an idle connection keeps
+            # Neon compute awake for nothing. Render keeps min_size=1.
+            min_size=0 if SERVERLESS else 1,
             max_size=8,
             kwargs={"row_factory": dict_row},
             open=True,
