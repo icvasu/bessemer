@@ -1,0 +1,1714 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shift Readiness Agent — Team NEON</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* MoveInSync's own palette, carried over from web/index.html so the deck and
+     the product look like one thing. Charcoal and green are their logo colours. */
+  :root {
+    --ink: #242021;
+    --ink-2: #5c5a5a;
+    --ink-3: #8a8787;
+    --ink-4: #b4b1b1;
+    --green: #3aae4a;
+    --green-deep: #2f9540;
+    --green-tint: #eaf6ec;
+    --amber: #d98c00;
+    --amber-tint: #fdf3e0;
+    --red: #cf2e2e;
+    --red-tint: #fbe9e9;
+    --violet: #6d28d9;
+    --violet-tint: #f1ecfd;
+    --paper: #ffffff;
+    --ground: #f5f5f5;
+    --rule: #e4e4e4;
+    --rule-soft: #efefef;
+    --radius: 8px;
+    --sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --display: "Poppins", "Inter", system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    --ease: cubic-bezier(.22,.61,.36,1);
+    --notes-h: 200px;
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: #1a1718;
+    color: var(--ink);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+
+  /* ------------------------------------------------------------------ stage */
+  #viewport {
+    position: fixed; inset: 0;
+    display: grid; place-items: center;
+    padding: 0;
+  }
+  #stage {
+    width: 1280px; height: 720px;
+    position: relative;
+    transform-origin: center center;
+    background: var(--paper);
+    box-shadow: 0 24px 80px rgba(0,0,0,.5);
+    overflow: hidden;
+  }
+
+  .slide {
+    position: absolute; inset: 0;
+    padding: 56px 72px 64px;
+    display: none;
+    flex-direction: column;
+    background: var(--paper);
+  }
+  .slide.on { display: flex; }
+  @media (prefers-reduced-motion: no-preference) {
+    .slide.on { animation: rise .28s var(--ease) both; }
+    @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  }
+
+  /* --------------------------------------------------------------- headings */
+  .eyebrow {
+    font-size: 12px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-3); margin-bottom: 14px; display: flex; align-items: center; gap: 10px;
+  }
+  .eyebrow .num {
+    font-family: var(--mono); font-size: 11px; color: var(--green-deep);
+    background: var(--green-tint); padding: 2px 7px; border-radius: 4px; letter-spacing: 0;
+  }
+  h1 {
+    font-family: var(--display); font-weight: 600; font-size: 62px; line-height: 1.03;
+    letter-spacing: -.03em; margin: 0 0 18px;
+  }
+  h2 {
+    font-family: var(--display); font-weight: 600; font-size: 38px; line-height: 1.12;
+    letter-spacing: -.022em; margin: 0 0 8px;
+  }
+  h3 {
+    font-family: var(--display); font-weight: 600; font-size: 17px; line-height: 1.25;
+    letter-spacing: -.01em; margin: 0 0 8px;
+  }
+  .sub {
+    font-size: 19px; line-height: 1.5; color: var(--ink-2); max-width: 92ch; margin: 0 0 26px;
+  }
+  .sub strong { color: var(--ink); font-weight: 600; }
+  p { margin: 0 0 12px; line-height: 1.55; }
+  /* Slides vary a lot in density. Centring the body block keeps a light slide
+     from looking unfinished without squashing a dense one.
+     Safe centring falls back to start when a dense slide overflows, so content
+     can never ride up into the heading. */
+  .body { flex: 1; min-height: 0; }
+  .body:not(.grid) { justify-content: safe center; }
+  .body.grid { align-content: safe center; }
+  em.hi { font-style: normal; color: var(--green-deep); font-weight: 600; }
+  em.warn { font-style: normal; color: var(--red); font-weight: 600; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* ------------------------------------------------------------------ title */
+  .title-slide {
+    background:
+      radial-gradient(1100px 520px at 78% -12%, rgba(58,174,74,.13), transparent 62%),
+      linear-gradient(160deg, #ffffff 0%, #fbfcfb 55%, #f3f8f4 100%);
+    padding: 56px 84px;
+  }
+  .title-slide > .deck-head { margin-bottom: 72px; }
+  .title-slide > .title-meta { margin-top: auto; }
+  .wordmark {
+    display: flex; align-items: center; gap: 11px;
+    font-family: var(--display); font-weight: 600; font-size: 19px; letter-spacing: -.01em;
+  }
+  .wordmark .mark {
+    width: 26px; height: 26px; border-radius: 50%; background: var(--green); position: relative; flex: none;
+  }
+  .wordmark .mark::after { content: ""; position: absolute; inset: 7px; border-radius: 50%; background: var(--paper); }
+  .wordmark .product { color: var(--ink-3); font-weight: 500; }
+  .team-badge {
+    display: inline-flex; align-items: center; gap: 9px;
+    background: var(--ink); color: #fff; border-radius: 999px;
+    padding: 8px 18px 8px 12px; font-family: var(--display); font-weight: 600;
+    font-size: 15px; letter-spacing: .01em;
+  }
+  .team-badge .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--green); flex: none; }
+  .team-badge span.label { font-weight: 500; color: #a5a2a2; font-size: 12.5px; letter-spacing: .08em; text-transform: uppercase; }
+  .title-meta {
+    display: flex; gap: 0; margin-top: 34px; border-top: 1px solid var(--rule); padding-top: 20px;
+  }
+  .title-meta div { padding-right: 34px; margin-right: 34px; border-right: 1px solid var(--rule); }
+  .title-meta div:last-child { border-right: 0; }
+  .title-meta .k { font-size: 11px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 5px; }
+  .title-meta .v { font-size: 15px; font-weight: 500; color: var(--ink); }
+
+  /* ------------------------------------------------------------------ cards */
+  .grid { display: grid; gap: 16px; }
+  .g2 { grid-template-columns: 1fr 1fr; }
+  .g3 { grid-template-columns: repeat(3, 1fr); }
+  .g4 { grid-template-columns: repeat(4, 1fr); }
+  .g5 { grid-template-columns: repeat(5, 1fr); }
+  .card {
+    background: var(--paper); border: 1px solid var(--rule); border-radius: var(--radius);
+    padding: 18px 20px; min-width: 0;
+  }
+  .card.soft { background: var(--ground); border-color: var(--rule-soft); }
+  .card.green { background: var(--green-tint); border-color: #cfe9d5; }
+  .card.amber { background: var(--amber-tint); border-color: #f2e0bd; }
+  .card.red { background: var(--red-tint); border-color: #f3d3d3; }
+  .card.violet { background: var(--violet-tint); border-color: #e0d7f8; }
+  .card.dark { background: var(--ink); border-color: var(--ink); color: #eceaea; }
+  .card.dark h3 { color: #fff; }
+  .card.dark .k { color: #9c9999; }
+  .card p, .card li { font-size: 14.5px; color: var(--ink-2); }
+  .card.dark p, .card.dark li { color: #c9c6c6; }
+  .card p:last-child, .card ul:last-child { margin-bottom: 0; }
+  .k { font-size: 11px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--ink-3); }
+
+  .stat { font-family: var(--display); font-weight: 600; letter-spacing: -.025em; font-variant-numeric: tabular-nums; line-height: 1; }
+  .stat.xl { font-size: 52px; }
+  .stat.lg { font-size: 40px; }
+  .stat.md { font-size: 30px; }
+  .stat.green { color: var(--green-deep); }
+  .stat.red { color: var(--red); }
+  .stat.amber { color: var(--amber); }
+
+  ul.tight { margin: 0; padding-left: 18px; }
+  ul.tight li { margin-bottom: 6px; line-height: 1.5; }
+  ul.tight li:last-child { margin-bottom: 0; }
+  ul.none { list-style: none; margin: 0; padding: 0; }
+  ul.none li { margin-bottom: 9px; line-height: 1.5; display: flex; gap: 10px; align-items: flex-start; }
+  ul.none li:last-child { margin-bottom: 0; }
+  .tick { flex: none; margin-top: 2px; }
+
+  /* ------------------------------------------------------------------ table */
+  table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+  th {
+    text-align: left; font-size: 11px; font-weight: 600; letter-spacing: .09em;
+    text-transform: uppercase; color: var(--ink-3); padding: 0 12px 9px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  td { padding: 10px 12px 10px 0; border-bottom: 1px solid var(--rule-soft); color: var(--ink-2); vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  td strong, th:first-child { color: var(--ink); }
+  td.n { font-variant-numeric: tabular-nums; }
+  code, .mono { font-family: var(--mono); font-size: .9em; background: var(--ground); padding: 1.5px 5px; border-radius: 4px; color: var(--ink); }
+  .card.dark code { background: #3a3536; color: #eceaea; }
+
+  /* ------------------------------------------------------------------ quote */
+  .quote {
+    border-left: 4px solid var(--green); background: var(--green-tint);
+    padding: 22px 26px; border-radius: 0 var(--radius) var(--radius) 0;
+    font-size: 21px; line-height: 1.5; color: var(--ink);
+  }
+  .quote.warn { border-left-color: var(--red); background: var(--red-tint); }
+  .quote.plain { border-left-color: var(--ink-4); background: var(--ground); }
+  .quote cite { display: block; font-style: normal; font-size: 13px; color: var(--ink-3); margin-top: 12px; }
+
+  /* ---------------------------------------------------------------- diagram */
+  .flow { display: flex; align-items: stretch; gap: 0; }
+  .node {
+    border: 1.5px solid var(--rule); border-radius: var(--radius); padding: 12px 14px;
+    background: var(--paper); font-size: 13.5px; line-height: 1.4; flex: 1; min-width: 0;
+  }
+  .node .t { font-weight: 600; font-size: 14px; color: var(--ink); display: block; margin-bottom: 3px; }
+  .node.det { background: var(--green-tint); border-color: #9fd6ab; }
+  .node.llm { background: var(--violet-tint); border-color: #c4b1f2; }
+  .node.data { background: #fdeee1; border-color: #f0c49b; }
+  .node.ui { background: #e4edfb; border-color: #a9c4ee; }
+  .arrow { display: grid; place-items: center; padding: 0 9px; flex: none; color: var(--ink-4); }
+  .lane {
+    border: 1.5px dashed var(--rule); border-radius: var(--radius); padding: 30px 14px 14px;
+    position: relative; background: #fcfcfc;
+  }
+  .lane > .lane-label {
+    position: absolute; top: 8px; left: 14px; font-size: 10.5px; font-weight: 600;
+    letter-spacing: .09em; text-transform: uppercase; color: var(--ink-3);
+  }
+  .lane.det { border-color: #9fd6ab; background: #f7fdf8; }
+  .lane.det > .lane-label { color: var(--green-deep); }
+  .lane.llm { border-color: #c4b1f2; background: #fbf9ff; }
+  .lane.llm > .lane-label { color: var(--violet); }
+
+  .legend { display: flex; gap: 20px; font-size: 12.5px; color: var(--ink-2); align-items: center; }
+  .legend i { width: 11px; height: 11px; border-radius: 3px; display: inline-block; margin-right: 6px; vertical-align: -1px; }
+
+  /* ------------------------------------------------------------------- misc */
+  .shot { border: 1px solid var(--rule); border-radius: var(--radius); overflow: hidden; background: var(--ground); }
+  .shot img { display: block; width: 100%; height: auto; }
+  .callouts { display: flex; flex-direction: column; gap: 10px; }
+  .callout { display: flex; gap: 11px; font-size: 14px; line-height: 1.45; color: var(--ink-2); }
+  .callout .pin {
+    flex: none; width: 21px; height: 21px; border-radius: 50%; background: var(--ink); color: #fff;
+    display: grid; place-items: center; font-size: 11.5px; font-weight: 600; font-family: var(--mono);
+  }
+  .pill {
+    display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: .05em;
+    text-transform: uppercase; padding: 3px 9px; border-radius: 999px;
+  }
+  .pill.green { background: var(--green-tint); color: var(--green-deep); }
+  .pill.red { background: var(--red-tint); color: var(--red); }
+  .pill.amber { background: var(--amber-tint); color: #a86c00; }
+  .pill.violet { background: var(--violet-tint); color: var(--violet); }
+  .pill.grey { background: var(--ground); color: var(--ink-2); }
+
+  .bar-row { display: grid; grid-template-columns: 150px 1fr 74px; gap: 14px; align-items: center; margin-bottom: 13px; font-size: 14px; }
+  .bar-row:last-child { margin-bottom: 0; }
+  .bar { height: 24px; background: var(--ground); border-radius: 4px; overflow: hidden; }
+  .bar > span { display: block; height: 100%; border-radius: 4px; }
+  .bar-row .val { text-align: right; font-family: var(--display); font-weight: 600; font-variant-numeric: tabular-nums; font-size: 17px; }
+
+  .kicker {
+    margin-top: auto; padding-top: 16px; border-top: 1px solid var(--rule);
+    font-size: 15px; color: var(--ink-2); line-height: 1.5;
+  }
+  .kicker strong { color: var(--ink); font-weight: 600; }
+
+  /* -------------------------------------------------------------------- HUD */
+  .hud {
+    position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 6px; z-index: 40;
+    background: rgba(30,27,28,.9); backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,.12); border-radius: 999px; padding: 5px 7px;
+    opacity: .28; transition: opacity .2s var(--ease);
+  }
+  .hud:hover, .hud:focus-within { opacity: 1; }
+  body.notes-open .hud { bottom: calc(var(--notes-h) + 12px); }
+  .hud button {
+    font: inherit; font-size: 12px; color: #e7e5e5; background: transparent; border: 0;
+    padding: 6px 11px; border-radius: 999px; cursor: pointer; transition: background .15s var(--ease);
+  }
+  .hud button:hover { background: rgba(255,255,255,.13); }
+  .hud button:focus-visible { outline: 2px solid var(--green); outline-offset: 1px; }
+  .hud .count { font-family: var(--mono); font-size: 12px; color: #a5a2a2; padding: 0 9px; font-variant-numeric: tabular-nums; }
+  .progress { position: fixed; top: 0; left: 0; height: 3px; background: var(--green); z-index: 50; transition: width .28s var(--ease); }
+
+  /* ------------------------------------------------------------------ notes */
+  #notes {
+    position: fixed; left: 0; right: 0; bottom: 0; height: var(--notes-h); z-index: 30;
+    background: #201d1e; border-top: 1px solid #3a3536; color: #d6d3d3;
+    padding: 16px 26px 20px; overflow-y: auto; display: none;
+    font-size: 14.5px; line-height: 1.62;
+  }
+  body.notes-open #notes { display: block; }
+  #notes .k { color: #8a8787; margin-bottom: 8px; display: block; }
+  #notes p { margin: 0 0 9px; max-width: 130ch; }
+  #notes strong { color: #fff; font-weight: 600; }
+  #notes .say { color: #b9e6c1; }
+
+  /* --------------------------------------------------------------- overview */
+  #overview {
+    position: fixed; inset: 0; z-index: 60; background: #171516; overflow-y: auto;
+    padding: 30px; display: none; grid-template-columns: repeat(5, 1fr); gap: 14px; align-content: start;
+  }
+  body.overview-open #overview { display: grid; }
+  .thumb {
+    background: #262223; border: 1px solid #3a3536; border-radius: 6px; padding: 12px 13px;
+    cursor: pointer; text-align: left; color: #d6d3d3; font: inherit; min-height: 78px;
+    transition: border-color .15s var(--ease), background .15s var(--ease);
+  }
+  .thumb:hover, .thumb:focus-visible { border-color: var(--green); background: #2d2829; outline: none; }
+  .thumb .n { font-family: var(--mono); font-size: 11px; color: #7d7a7a; display: block; margin-bottom: 6px; }
+  .thumb .t { font-size: 13px; font-weight: 500; line-height: 1.35; color: #eceaea; }
+  .thumb.here { border-color: var(--green); background: #2d2829; }
+
+  /* ------------------------------------------------------------------ print */
+  @page { size: 1280px 720px; margin: 0; }
+  @media print {
+    html, body { overflow: visible; background: #fff; }
+    #viewport { position: static; display: block; padding: 0; }
+    #stage { width: 1280px; height: auto; transform: none !important; box-shadow: none; }
+    .slide { position: relative; display: flex !important; width: 1280px; height: 720px; page-break-after: always; break-after: page; animation: none !important; }
+    .hud, #notes, .progress, #overview { display: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="progress" id="progress"></div>
+
+<div id="viewport">
+<div id="stage">
+
+<!-- ══════════════════════════════════════════════════════════ 1 · TITLE ══ -->
+<section class="slide title-slide"
+  data-title="Title — Shift Readiness Agent"
+  data-notes="<p class='say'>&ldquo;Good morning. We are Team NEON. Our project is called the Shift Readiness Agent.&rdquo;</p><p class='say'>&ldquo;It answers one question, for one person, at one moment in the day: it is ten to nine, a line manager is about to open a support floor, and they need to know &mdash; <strong>is my floor staffed at nine, and if not, what do I do about it?</strong>&rdquo;</p><p>Pause here. Do not rush into architecture. Let the question sit. Everything after this slide is in service of that one sentence.</p>">
+  <div class="deck-head" style="display:flex; align-items:center; justify-content:space-between;">
+    <div class="wordmark"><span class="mark"></span>MoveInSync <span class="product">Hackathon 2026</span></div>
+    <div class="team-badge"><span class="dot"></span><span class="label">Team</span> NEON</div>
+  </div>
+
+  <div class="eyebrow" style="margin-bottom:16px;">Agentic Intelligence &amp; Reporting Layer for Enterprise Mobility</div>
+  <h1>Shift Readiness<br>Agent</h1>
+  <p class="sub" style="font-size:23px; max-width:66ch; margin-bottom:0;">
+    A line manager at a 24/7 support centre has one question at ten to nine:
+    <strong>is my floor staffed at nine, and if not, what do I do about it?</strong>
+    This is the agent that answers it.
+  </p>
+
+  <div class="title-meta">
+    <div><div class="k">Persona</div><div class="v">Team / line manager</div></div>
+    <div><div class="k">Dataset</div><div class="v">Anonymised trip logs · 2.3M rows</div></div>
+    <div><div class="k">Slice</div><div class="v">Clearwater Campus · 09:00 · 11 Jun 2026</div></div>
+    <div><div class="k">Forms</div><div class="v">Alerting · Narrative · Chat · Comms</div></div>
+  </div>
+</section>
+
+<!-- ═════════════════════════════════════════════════ 2 · THE HUMAN MOMENT ══ -->
+<section class="slide"
+  data-title="The moment: 08:50 on a Thursday"
+  data-notes="<p class='say'>&ldquo;Let me put you in the room. It is 08:50 on a Thursday. You run two queues on a support floor. Twenty-four people are supposed to be at their desks in ten minutes.&rdquo;</p><p class='say'>&ldquo;Today you would open the transport portal, see a list of cabs, and still not know the only thing you care about &mdash; how many people are actually going to be sitting down at nine. So you call three people, guess, and hope.&rdquo;</p><p class='say'>&ldquo;The data to answer this already exists. It is in MoveInSync. Nobody has ever turned it into an answer for <strong>this</strong> person.&rdquo;</p>">
+  <div class="eyebrow"><span class="num">01</span> The moment we designed for</div>
+  <h2>08:50 on a Thursday. Twenty-four people due in ten minutes.</h2>
+  <p class="sub">The manager is accountable for the floor. The data that predicts the floor sits in the transport system, in a format built for someone else.</p>
+
+  <div class="body grid g2">
+    <div class="card red">
+      <div class="k" style="color:#a33;">What happens today</div>
+      <h3 style="margin-top:6px;">Assemble, then guess</h3>
+      <ul class="tight">
+        <li>Open the transport portal — a list of cabs and delay flags.</li>
+        <li>Cross-check the roster in a spreadsheet.</li>
+        <li>Ring three or four people who might be stuck.</li>
+        <li>Guess how short the queue will be.</li>
+        <li>Find out you were wrong at 09:10, from the call queue.</li>
+      </ul>
+      <p style="margin-top:12px;"><em class="warn">The signal is rich. The insight is missing. The actions are manual.</em></p>
+    </div>
+    <div class="card green">
+      <div class="k" style="color:#2f7a3c;">What the agent does</div>
+      <h3 style="margin-top:6px;">Answer, priced, with the message written</h3>
+      <ul class="tight">
+        <li>Watches every rostered agent's commute against the clock.</li>
+        <li>Projects the floor and the service level per queue.</li>
+        <li>Opens an alert when a threshold breaks — before nine, not after.</li>
+        <li>Names who can cover, from people verifiably already on the floor.</li>
+        <li>Hands back a message the manager can forward unedited.</li>
+      </ul>
+      <p style="margin-top:12px;"><em class="hi">Senses. Reasons. Acts. Without being asked.</em></p>
+    </div>
+  </div>
+
+  <div class="kicker">
+    The brief names three personas. We chose the one that nobody builds for — and the one where a twenty-minute delay
+    turns into money in under an hour.
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ 3 · THE BRIEF ══ -->
+<section class="slide"
+  data-title="The brief, and what it asks for"
+  data-notes="<p class='say'>&ldquo;The problem statement is unusually well written, so we took it literally.&rdquo;</p><p class='say'>&ldquo;It says the pain is not missing data &mdash; it is that a metric without context is just a number. And it asks for a layer that <strong>senses, reasons and acts with minimal human prompting</strong>. Not a dashboard. Not a chatbot over a database.&rdquo;</p><p class='say'>&ldquo;Every mandatory requirement on the right has a specific answer in our build, and I will show each one running.&rdquo;</p><p>If a judge wrote the brief, this slide tells them you read it. Do not skip it.</p>">
+  <div class="eyebrow"><span class="num">02</span> The brief</div>
+  <h2>What MoveInSync asked for</h2>
+
+  <div class="body grid g2" style="gap:26px;">
+    <div>
+      <div class="quote plain" style="font-size:19px;">
+        &ldquo;A metric without context is just a number. <strong>OTA is 78%</strong> matters far less than
+        <strong>it was 85% last month, SLA is 90%, and two vendors are responsible for the gap.</strong>&rdquo;
+        <cite>Problem statement, §4 — Problem definition</cite>
+      </div>
+      <div class="quote" style="font-size:19px; margin-top:16px;">
+        &ldquo;An agentic layer that <strong>senses</strong> what's happening, <strong>reasons</strong> about what it means,
+        and <strong>acts</strong> — with minimal human prompting.&rdquo;
+        <cite>Problem statement, §4 — Desired improvement</cite>
+      </div>
+      <p class="sub" style="font-size:16px; margin:18px 0 0;">
+        The operative words are <em class="hi">minimal human prompting</em>. A dashboard waits to be looked at.
+        A chatbot waits to be asked. Neither of those is what was requested.
+      </p>
+    </div>
+
+    <div class="card soft">
+      <div class="k">Mandatory requirements → our answer</div>
+      <table style="margin-top:12px;">
+        <tr>
+          <td style="width:47%;"><strong>Working, demo-able prototype on the provided dataset</strong></td>
+          <td>Live board on 2.3M loaded rows. 112 tests.</td>
+        </tr>
+        <tr>
+          <td><strong>Agentic — senses, reasons, acts</strong></td>
+          <td>Clock → deterministic reasoning → alert, draft, recorded action.</td>
+        </tr>
+        <tr>
+          <td><strong>Serves one named persona</strong></td>
+          <td>Team / line manager. Built only for them.</td>
+        </tr>
+        <tr>
+          <td><strong>Contextualises against ≥1 reference point</strong></td>
+          <td><em class="hi">Five</em>: team norm, weekday, recent trend, peer sites, structural slack.</td>
+        </tr>
+        <tr>
+          <td><strong>Good-to-have: ≥2 solution forms</strong></td>
+          <td><em class="hi">Five</em>: alerting, narrative, chat, decision support, comms.</td>
+        </tr>
+        <tr>
+          <td><strong>Good-to-have: handles messy data</strong></td>
+          <td>Nine documented quirks, each counted at load.</td>
+        </tr>
+        <tr>
+          <td><strong>Bonus: deployability into the platform</strong></td>
+          <td>Tenant-scoped, ~15 ms/tick, one seam to swap.</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ 4 · PERSONAS ══ -->
+<section class="slide"
+  data-title="Three personas, one deliberate choice"
+  data-notes="<p class='say'>&ldquo;Three personas were offered. We deliberately picked the third, and I want to explain why, because the choice <em>is</em> the product decision.&rdquo;</p><p class='say'>&ldquo;The transport manager and the facilities head both <strong>operate</strong> the transport service. The line manager only <strong>consumes</strong> it. They cannot call a vendor. They cannot re-plan a route. All they can do is move people on their own floor.&rdquo;</p><p class='say'>&ldquo;That constraint is a gift. It means every recommendation we make has to be something this person can actually execute in the next ten minutes. It kept us honest.&rdquo;</p><p class='say'>&ldquo;It is also the only persona where a delay converts into money the same morning.&rdquo;</p>">
+  <div class="eyebrow"><span class="num">03</span> Who we built for</div>
+  <h2>Three personas. We chose the one nobody builds for.</h2>
+  <p class="sub">The first two operate the transport service. The third only lives with it — which is exactly why their tooling is missing.</p>
+
+  <div class="body grid g3">
+    <div class="card">
+      <span class="pill grey">Not this build</span>
+      <h3 style="margin-top:12px;">Transport manager</h3>
+      <p>Owns vendor coordination, escalations, shift planning. Operates the service.</p>
+      <p style="margin-top:10px; color:var(--ink-3); font-size:13.5px;">Well served by existing ops dashboards. We surface a vendor pattern <em>to</em> them, as one escalation option.</p>
+    </div>
+    <div class="card">
+      <span class="pill grey">Not this build</span>
+      <h3 style="margin-top:12px;">Transport &amp; facilities head</h3>
+      <p>Owns budget, SLA accountability, leadership reporting. Strategic, monthly cadence.</p>
+      <p style="margin-top:10px; color:var(--ink-3); font-size:13.5px;">Our alert output is already forwardable upward without rework — but their own view is out of scope.</p>
+    </div>
+    <div class="card green" style="border-width:2px; border-color:var(--green);">
+      <span class="pill green">Our persona</span>
+      <h3 style="margin-top:12px;">Team / line manager</h3>
+      <p>Shift-based ops. Needs to know who made it, who was late, and how delays ripple into floor readiness.</p>
+      <ul class="tight" style="margin-top:10px;">
+        <li>Cannot call a vendor.</li>
+        <li>Cannot re-plan a route.</li>
+        <li>Can only move people on their own floor.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="kicker">
+    <strong>Why this constraint made the product better.</strong> Because the manager can only act on their own floor,
+    every recommendation had to be executable within ten minutes by one person. No "contact the vendor" hand-waving.
+    That is what forced us to compute cover candidates who are <em class="hi">verifiably already at their desks</em>.
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════ 5 · THE INSIGHT ══ -->
+<section class="slide"
+  data-title="The row in the data that started the project"
+  data-notes="<p class='say'>&ldquo;This is the slide I would keep if I could only keep one.&rdquo;</p><p class='say'>&ldquo;Before we designed anything, we went looking in the trip log. We found rows like this one. A billing agent, planned to be dropped before a nine o'clock shift, actually dropped at 09:20. And the delay reason column says&hellip; <strong>NODELAY</strong>.&rdquo;</p><p class='say'>&ldquo;By the transport system's own measure, nothing went wrong that morning. The cab was fine. And the floor was short for twenty minutes.&rdquo;</p><p class='say'>&ldquo;That is not a bug in the data. It is two different definitions of the word 'delay'. Transport measures the <strong>trip</strong>. The manager lives with the <strong>floor</strong>. Nobody translates between them.&rdquo;</p><p class='say'>&ldquo;So we made a rule, and it is enforced in code: this product <strong>never reads the delay_reason column.</strong> It watches the desk.&rdquo;</p><p>This is your strongest moment. Slow down. It shows you interrogated the dataset instead of decorating it.</p>">
+  <div class="eyebrow"><span class="num">04</span> How we thought about it</div>
+  <h2>One row in the trip log rewrote the whole design</h2>
+
+  <div class="body" style="display:flex; flex-direction:column; gap:18px;">
+    <div class="card" style="padding:0; overflow:hidden;">
+      <div style="background:var(--ground); padding:10px 20px; border-bottom:1px solid var(--rule); font-family:var(--mono); font-size:11.5px; color:var(--ink-3); letter-spacing:.04em;">
+        Ride_data_trip-June_2026.csv &nbsp;·&nbsp; one leg, Clearwater Campus, 09:00 shift
+      </div>
+      <table style="font-family:var(--mono); font-size:14px;">
+        <thead>
+          <tr>
+            <th style="padding-left:20px;">shift_type</th><th>planned_drop</th><th>actual_drop</th>
+            <th>minutes past bell</th><th>delay_reason</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="padding-left:20px;"><strong>09:00</strong></td>
+            <td class="n">08:55</td>
+            <td class="n"><strong style="color:var(--red);">09:20</strong></td>
+            <td class="n"><strong style="color:var(--red);">+20</strong></td>
+            <td><span class="pill green" style="font-family:var(--sans);">NODELAY</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="grid g2" style="gap:16px;">
+      <div class="card red">
+        <div class="k" style="color:#a33;">The disagreement</div>
+        <p style="margin-top:8px; font-size:16px; line-height:1.5;">
+          <strong style="color:var(--ink);">Transport measures the trip.</strong> The cab ran within tolerance,
+          so the trip is clean and the operator's dashboard is green.
+        </p>
+        <p style="font-size:16px; line-height:1.5;">
+          <strong style="color:var(--ink);">The manager lives with the floor.</strong> The desk was empty
+          for twenty minutes and the call queue felt every second of it.
+        </p>
+        <p style="margin-top:12px;"><em class="warn">70%</em> of arrivals that miss this shift's start are stamped <code>NODELAY</code>.</p>
+      </div>
+      <div class="card green">
+        <div class="k" style="color:#2f7a3c;">The design rule it produced</div>
+        <p style="margin-top:8px; font-size:16px; line-height:1.5;">
+          The product <strong style="color:var(--ink);">never reads <code>delay_reason</code></strong>.
+          Not once, anywhere in the codebase.
+        </p>
+        <p style="font-size:16px; line-height:1.5;">
+          It derives lateness from the only thing the manager cares about: was a body in a chair when the shift bell rang.
+        </p>
+        <p style="margin-top:12px;">
+          The hard alert trigger is the deterministic <em class="hi">"planned drop has passed, no arrival recorded"</em> —
+          which has no false positives, with or without GPS.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════ 6 · DATA FINDINGS ══ -->
+<section class="slide"
+  data-title="What the data said before we wrote product code"
+  data-notes="<p class='say'>&ldquo;We spent the first block of the hackathon reading the data, not writing features. Four findings changed what we built.&rdquo;</p><p class='say'>&ldquo;First &mdash; half the riders take the same shift every day, so a <strong>team is derivable from the data</strong>. We did not have to invent a roster.&rdquo;</p><p class='say'>&ldquo;Second, and this is the uncomfortable one. The median buffer the planner leaves between drop and shift start is <strong>five minutes</strong>. The natural noise in journey time is <strong>thirteen</strong>. Half the late arrivals at this site are late <strong>by construction</strong>. No amount of daily escalation fixes a schedule built that way, so we surface it as a benchmark rather than pretending each morning is a surprise.&rdquo;</p><p class='say'>&ldquo;Third, Clearwater is the worst site in the network on this shift. Forty-six percent against twenty-nine across four peers. One peer site runs the same shift under one percent, so this is fixable, not fate.&rdquo;</p><p class='say'>&ldquo;Fourth, the NODELAY finding you just saw.&rdquo;</p>">
+  <div class="eyebrow"><span class="num">05</span> Evidence first</div>
+  <h2>Four findings from three months of trip logs</h2>
+  <p class="sub">Read before a line of product code was written. Each one changed the design.</p>
+
+  <div class="body grid g2">
+    <div class="card">
+      <div class="stat lg">51<span style="font-size:26px;">%</span></div>
+      <h3 style="margin-top:10px;">of riders hold one fixed shift all month</h3>
+      <p>A team is <em class="hi">derivable</em>, not invented. Our 24-person roster and 24-person cover pool are real riders who took this shift on 40+ days.</p>
+    </div>
+    <div class="card amber">
+      <div style="display:flex; align-items:baseline; gap:12px;">
+        <div class="stat lg amber">5<span style="font-size:20px;"> min</span></div>
+        <span style="color:var(--ink-3); font-size:20px;">vs</span>
+        <div class="stat lg amber">13<span style="font-size:20px;"> min</span></div>
+      </div>
+      <h3 style="margin-top:10px;">Planned buffer, against journey-time noise</h3>
+      <p>The plan sits <em>inside its own error bar</em>. Half of all arrivals are late <strong style="color:var(--ink);">by construction</strong>. Escalating daily cannot fix a schedule built that way — so we report it as a standing benchmark.</p>
+    </div>
+    <div class="card red">
+      <div style="display:flex; align-items:baseline; gap:12px;">
+        <div class="stat lg red">46<span style="font-size:20px;">%</span></div>
+        <span style="color:var(--ink-3); font-size:20px;">vs</span>
+        <div class="stat lg" style="color:var(--ink-2);">29<span style="font-size:20px;">%</span></div>
+      </div>
+      <h3 style="margin-top:10px;">Clearwater is the worst site on this shift</h3>
+      <p>Against four peer sites. Cedar Ridge runs the same 09:00 shift at <strong style="color:var(--ink);">under 1%</strong>. This is a site problem, not a law of physics — and the peer number is one of the five benchmarks in every alert.</p>
+    </div>
+    <div class="card">
+      <div class="stat lg red">70<span style="font-size:26px;">%</span></div>
+      <h3 style="margin-top:10px;">of late-for-shift arrivals are stamped <code>NODELAY</code></h3>
+      <p>The operator's own metric cannot see this problem. That is the gap the product lives in.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ 7 · METRIC → DECISION ══ -->
+<section class="slide"
+  data-title="Metric → context → decision"
+  data-notes="<p class='say'>&ldquo;The brief says a metric without context is just a number. We took that as a ladder with three rungs, and we built all three.&rdquo;</p><p class='say'>&ldquo;A dashboard stops at the first rung. A good analytics product reaches the second. The brief is asking for the third &mdash; and the third rung is the only one that reduces the manager's effort, because it is the only one that ends in a decision and a sent message.&rdquo;</p><p class='say'>&ldquo;Read the third column out loud to yourself. That is the actual product output, and every number in it was computed.&rdquo;</p>">
+  <div class="eyebrow"><span class="num">06</span> The gap we close</div>
+  <h2>A metric, contextualised, is still not a decision</h2>
+  <p class="sub">Three rungs. Most tools stop at the first. The brief asks for the third.</p>
+
+  <div class="body grid g3">
+    <div class="card soft">
+      <span class="pill grey">Rung 1 · A number</span>
+      <h3 style="margin-top:12px;">What a dashboard shows</h3>
+      <div class="stat md" style="margin:16px 0 10px; color:var(--ink-2);">Coverage 67%</div>
+      <p>True, timely, and useless. Sixty-seven percent of <em>what</em>, costing <em>whom</em>, fixed <em>how</em>?</p>
+      <p style="margin-top:12px; color:var(--ink-3); font-size:13.5px;">The manager still has to do all the thinking.</p>
+    </div>
+    <div class="card amber">
+      <span class="pill amber">Rung 2 · With context</span>
+      <h3 style="margin-top:12px;">What good analytics shows</h3>
+      <p style="margin:16px 0 10px; font-size:15.5px; color:var(--ink);">
+        Coverage 67%, against a 75% floor. Tracking toward 4 late — about the usual 4 for this team.
+        Clearwater runs 46% late against 29% across four peer sites.
+      </p>
+      <p style="color:var(--ink-3); font-size:13.5px;">Now it means something. The manager still has to decide and still has to write the message.</p>
+    </div>
+    <div class="card green" style="border-width:2px; border-color:var(--green);">
+      <span class="pill green">Rung 3 · A decision</span>
+      <h3 style="margin-top:12px;">What the agent delivers</h3>
+      <p style="margin:16px 0 10px; font-size:15.5px; color:var(--ink);">
+        Billing is <strong>4 short until 09:19</strong>. Service level <strong>15%</strong> now; the day's 80% target still holds.
+        <strong>Move Agent 27, 29, 35, 31</strong> — already on the floor. Otherwise 4 night agents are held 19 min
+        and miss the 09:15 cab home. <em class="hi">Message drafted. One click sends it.</em>
+      </p>
+      <p style="color:var(--green-deep); font-size:13.5px; font-weight:500;">Effort removed, not relocated.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════ 8 · THE BOARD ══ -->
+<section class="slide"
+  data-title="What the manager actually sees"
+  data-notes="<p class='say'>&ldquo;This is the whole product. One screen. Nothing behind a menu.&rdquo;</p><p class='say'>&ldquo;On the left is the floor: the clock, three of twenty-four seated, and a card per queue with the service level. On the right is the part that matters &mdash; the alert, written like a note from a colleague, and underneath it the options as buttons, with the recommended one in green.&rdquo;</p><p class='say'>&ldquo;Notice what is <strong>not</strong> here. No vendor league table. No cost per kilometre. No GPS trace. This manager cannot act on any of those, so showing them would be noise.&rdquo;</p><p class='say'>&ldquo;It is one HTML file with no build step, in MoveInSync's own palette, so it could sit inside their line-manager desk tomorrow.&rdquo;</p>">
+  <div class="eyebrow"><span class="num">07</span> The product</div>
+  <h2>The board at 08:55 — the worst minute of the morning</h2>
+
+  <div class="body" style="display:grid; grid-template-columns: 1fr 292px; gap:24px; align-items:start;">
+    <div class="shot"><img src="../samples/screens/board_0855.png" alt="The shift readiness board at 08:55, showing 3 of 24 agents on the floor, two queue cards below service level, the rider table, and two open alerts with priced options."></div>
+    <div class="callouts">
+      <div class="callout"><span class="pin">1</span><div><strong>3 of 24 on the floor.</strong> 16 expected by 09:05, 67% of the roster.</div></div>
+      <div class="callout"><span class="pin">2</span><div><strong>Service level per queue,</strong> not headcount. 15% and 22% against an 80% target.</div></div>
+      <div class="callout"><span class="pin">3</span><div><strong>Day so far still holds 80%.</strong> The honest half — this is a floor problem, not yet a contract problem.</div></div>
+      <div class="callout"><span class="pin">4</span><div><strong>Every rider's position and arrival,</strong> with the ± spread shown, never hidden.</div></div>
+      <div class="callout"><span class="pin">5</span><div><strong>The alert reads like a colleague</strong> wrote it, with the five benchmarks beneath.</div></div>
+      <div class="callout"><span class="pin">6</span><div><strong>Options as buttons,</strong> each scored on the contract, recommended one in green.</div></div>
+      <hr style="border:0; border-top:1px solid var(--rule); margin:4px 0;">
+      <div class="callout"><span class="pin" style="background:var(--green);">✓</span><div>One HTML file, no build step, MoveInSync's palette. Drops into their line-manager desk.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════ 9 · THE ALERT ══ -->
+<section class="slide"
+  data-title="The alert, read aloud"
+  data-notes="<p class='say'>&ldquo;Let me read you the actual output. This is copied from the API response, not written for the slide.&rdquo;</p><p>Read the quote slowly and in full. Then:</p><p class='say'>&ldquo;Five sentences. Every single number in there came from a Python computation. Every name is a real rider from the dataset. The model's job was to decide which two of five facts to lead with, and to write English.&rdquo;</p><p class='say'>&ldquo;That split is deliberate and I will come back to it, because it is the difference between an agent a director can forward and an agent that makes something up on a Tuesday.&rdquo;</p>">
+  <div class="eyebrow"><span class="num">08</span> Real output</div>
+  <h2>The alert, in the manager's language</h2>
+
+  <div class="body" style="display:flex; flex-direction:column; gap:16px;">
+    <div class="quote" style="font-size:20.5px; line-height:1.55;">
+      <strong>Billing Support is four agents short until 09:19.</strong> Service level is 15% now, and the day's 80% target still holds.
+      This is tracking towards 5 late, about the usual 5 for this team. Recommend early-shift cover from
+      Agent 27, Agent 29, Agent 35, and Agent 31. If nobody acts, 4 night agents are held 19 min past shift end
+      and 4 would miss the 09:15 cab home.
+      <cite>Verbatim from <code>GET /alerts</code> · 2026-06-11 08:55 · <code>samples/api_alerts_narrated.json</code></cite>
+    </div>
+
+    <div class="grid g5">
+      <div class="card soft" style="padding:14px 16px;">
+        <div class="k">Fact 1 · Shortfall</div>
+        <p style="margin-top:6px; font-size:13.5px;">Rider state machine + arrival projection, guarded by the clock.</p>
+        <span class="pill green" style="margin-top:8px;">Computed</span>
+      </div>
+      <div class="card soft" style="padding:14px 16px;">
+        <div class="k">Fact 2 · Contract</div>
+        <p style="margin-top:6px; font-size:13.5px;">Erlang C at 8 agents vs 12, plus the day-level rollup.</p>
+        <span class="pill green" style="margin-top:8px;">Computed</span>
+      </div>
+      <div class="card soft" style="padding:14px 16px;">
+        <div class="k">Fact 3 · Benchmark</div>
+        <p style="margin-top:6px; font-size:13.5px;">Team norm over 64 days of the same team's history.</p>
+        <span class="pill green" style="margin-top:8px;">Computed</span>
+      </div>
+      <div class="card soft" style="padding:14px 16px;">
+        <div class="k">Fact 4 · Remedy</div>
+        <p style="margin-top:6px; font-size:13.5px;">Cover search over agents with a recorded arrival before now.</p>
+        <span class="pill green" style="margin-top:8px;">Computed</span>
+      </div>
+      <div class="card violet" style="padding:14px 16px;">
+        <div class="k" style="color:var(--violet);">The prose</div>
+        <p style="margin-top:6px; font-size:13.5px;">Which two facts lead, and the five English sentences.</p>
+        <span class="pill violet" style="margin-top:8px;">Model</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="kicker">
+    <strong>The model cannot invent a number or a name</strong> — its tools only hand it what was already computed.
+    That is not a prompt instruction. It is a property of the tool surface.
+  </div>
+</section>
+
+<!-- ═════════════════════════════════════════════════ 10 · THE OPTIONS ══ -->
+<section class="slide"
+  data-title="Three options, each priced on the contract"
+  data-notes="<p class='say'>&ldquo;Under the alert are the options. Not suggestions &mdash; buttons. Each one is scored on the same contract so the manager can compare them on one axis.&rdquo;</p><p class='say'>&ldquo;The first is what happens if nobody does anything. We show it deliberately, priced, because the default is a decision too and it usually costs the most.&rdquo;</p><p class='say'>&ldquo;The middle one is recommended. Four agents already sitting at their desks, trained on this queue, none of whom have covered yet this week &mdash; so it is fair as well as fast.&rdquo;</p><p class='say'>&ldquo;The third one is interesting: two of the affected riders are on the same vendor. That is a <strong>pattern</strong>, and it belongs to the transport manager, not to this shift. So the agent routes it there instead of asking a line manager to fight a vendor at ten to nine.&rdquo;</p>">
+  <div class="eyebrow"><span class="num">09</span> Decision support</div>
+  <h2>Three options. Each priced, each scored, one click.</h2>
+  <p class="sub">Same contract, same axis. The manager compares like with like.</p>
+
+  <div class="body grid g3">
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+        <div><span class="pill grey">Do nothing</span><h3 style="margin-top:10px;">Keep the night shift on</h3></div>
+        <div class="stat md" style="color:var(--ink-2);">92%</div>
+      </div>
+      <p style="margin-top:10px;">Positions stay manned. But 4 night agents are held <strong style="color:var(--ink);">29 min</strong> past shift end and 4 miss the 09:15 cab home.</p>
+      <p style="margin-top:10px;"><span class="k">People</span><br>Night 02, Night 04, Night 06, Night 08</p>
+      <p style="margin-top:10px; color:var(--red); font-weight:600;">Overtime ≈ 1,234</p>
+      <p style="margin-top:8px; font-size:13px; color:var(--ink-3);">This is what happens by default if nothing else is decided.</p>
+    </div>
+
+    <div class="card green" style="border-width:2px; border-color:var(--green);">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+        <div><span class="pill green">Recommended</span><h3 style="margin-top:10px;">Move the early shift onto the queue</h3></div>
+        <div class="stat md green">92%</div>
+      </div>
+      <p style="margin-top:10px;">4 early-shift agents <strong style="color:var(--ink);">already on the floor</strong> and trained on this queue. The night shift goes home on time.</p>
+      <p style="margin-top:10px;"><span class="k">People</span><br>Agent 27 · Agent 29 · Agent 35 · Agent 31</p>
+      <p style="margin-top:10px; color:var(--green-deep); font-weight:600;">Hold-over avoided</p>
+      <p style="margin-top:8px; font-size:13px; color:var(--ink-2);">Each verified by a recorded arrival, and each with zero cover minutes this week — fair as well as fast.</p>
+    </div>
+
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+        <div><span class="pill grey">Route onward</span><h3 style="margin-top:10px;">Escalate to transport</h3></div>
+        <div class="stat md" style="color:var(--ink-3);">—</div>
+      </div>
+      <p style="margin-top:10px;">2 of the affected riders are on <strong style="color:var(--ink);">Rahul Mikhailov Travel</strong>. That is a pattern for the transport manager, not this shift.</p>
+      <p style="margin-top:10px; font-size:13px; color:var(--ink-3);">The agent recognises which problems belong to a different persona and hands them across — rather than asking a line manager to fight a vendor at 08:55.</p>
+    </div>
+  </div>
+
+  <div class="kicker">
+    <strong>Every option carries its own cost and its own service-level score,</strong> so the choice is a comparison rather
+    than a guess. Clicking one records the decision, returns the draft, and charges the cost to whoever absorbs it.
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════ 11 · THE DRAFT ══ -->
+<section class="slide"
+  data-title="One click returns a sendable message"
+  data-notes="<p class='say'>&ldquo;Here is the acting half, which is the part most hackathon agents skip.&rdquo;</p><p class='say'>&ldquo;The manager clicks the green button. Three things happen. The decision is written to Postgres with a timestamp, so there is an audit trail. The cost is charged to whoever absorbs it. And this message comes back &mdash; ready to forward, with no editing.&rdquo;</p><p class='say'>&ldquo;Read it. It names four real people. It gives the number, the ask, and the time. It is short enough that a shift lead will actually read it on a phone.&rdquo;</p><p class='say'>&ldquo;And if the model is down or out of credits, a template fallback still produces a sendable message. The act path never depends on an LLM being up.&rdquo;</p>">
+  <div class="eyebrow"><span class="num">10</span> Automated communication</div>
+  <h2>One click, and the message is already written</h2>
+
+  <div class="body grid g2" style="gap:26px;">
+    <div>
+      <div class="k" style="margin-bottom:10px;">Returned by <code>POST /alerts/{id}/act</code></div>
+      <div class="card" style="padding:0; overflow:hidden;">
+        <div style="background:var(--ink); color:#fff; padding:11px 20px; font-size:13px; display:flex; justify-content:space-between;">
+          <span>To: Billing Support — shift leads</span><span style="color:#9c9999; font-family:var(--mono);">08:55</span>
+        </div>
+        <div style="padding:22px 24px; font-size:17px; line-height:1.6;">
+          Billing Support is 67% staffed for the 09:00 start. Could <strong>Agent 27, Agent 29, Agent 35, Agent 31</strong>
+          move onto the queue until the 09:00 team is in? Asking at 08:55.
+        </div>
+      </div>
+      <p style="margin-top:14px; font-size:14px; color:var(--ink-3);">
+        Verbatim from <code>samples/api_action.json</code>. No editing step. No "review before sending" dialog to click through.
+      </p>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:14px;">
+      <div class="card soft">
+        <div class="k">And behind the click</div>
+        <ul class="none" style="margin-top:12px;">
+          <li><span class="tick"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2f9540" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span><div><strong>Decision recorded</strong> in <code>alert_actions</code> with the pathway, the people, and the minute — an audit trail a director can query.</div></li>
+          <li><span class="tick"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2f9540" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span><div><strong>Cost charged</strong> to whoever absorbs it — cover pool, night shift, or the contract.</div></li>
+          <li><span class="tick"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2f9540" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span><div><strong>Cover fairness updated</strong> so the same four people are not volunteered every morning.</div></li>
+        </ul>
+      </div>
+      <div class="card amber">
+        <div class="k" style="color:#a86c00;">Failure path, designed in</div>
+        <p style="margin-top:8px;">If the model is down, rate-limited, or out of credits, a <strong style="color:var(--ink);">template fallback</strong>
+        still returns a sendable draft for every pathway. The board keeps running. <em>The act path never depends on an LLM being up.</em></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════════════════════════════════════════ 12 · NON-LINEARITY ══ -->
+<section class="slide"
+  data-title="Why service level, not headcount"
+  data-notes="<p class='say'>&ldquo;This is the slide that justifies the maths, so let me make the point plainly.&rdquo;</p><p class='say'>&ldquo;Intuition says if you lose four of twelve agents, you get two-thirds of the service. Intuition is badly wrong.&rdquo;</p><p class='say'>&ldquo;On a properly loaded queue, twelve agents answer ninety-two percent of calls within twenty seconds. Take four away &mdash; the same four &mdash; and it collapses to <strong>fifteen percent</strong>. Average wait goes from eight seconds to about thirteen minutes.&rdquo;</p><p class='say'>&ldquo;A headcount cannot convey that. Sixty-seven percent staffed <em>sounds</em> survivable. Fifteen percent service level does not. That is why we compute Erlang C on every tick instead of showing a bar chart of who is missing.&rdquo;</p>">
+  <div class="eyebrow"><span class="num">11</span> Why the maths earns its place</div>
+  <h2>Staffing is not linear — and a headcount hides that</h2>
+  <p class="sub">Billing Support, real queue parameters. Same offered load, four fewer agents.</p>
+
+  <div class="body grid g2" style="gap:30px;">
+    <div>
+      <div class="bar-row">
+        <div><strong>12 agents</strong><br><span style="font-size:12.5px; color:var(--ink-3);">full strength</span></div>
+        <div class="bar"><span style="width:92%; background:var(--green);"></span></div>
+        <div class="val" style="color:var(--green-deep);">92%</div>
+      </div>
+      <div class="bar-row">
+        <div><strong>8 agents</strong><br><span style="font-size:12.5px; color:var(--ink-3);">what 08:55 projects</span></div>
+        <div class="bar"><span style="width:15%; background:var(--red);"></span></div>
+        <div class="val" style="color:var(--red);">15%</div>
+      </div>
+      <div class="bar-row">
+        <div style="color:var(--ink-3);">Naive expectation<br><span style="font-size:12.5px;">67% of the people → 67%?</span></div>
+        <div class="bar"><span style="width:67%; background:repeating-linear-gradient(45deg,#d4d1d1,#d4d1d1 6px,#e8e6e6 6px,#e8e6e6 12px);"></span></div>
+        <div class="val" style="color:var(--ink-4);">wrong</div>
+      </div>
+      <p style="margin-top:20px; font-size:15px; color:var(--ink-2); line-height:1.55;">
+        Losing a third of the agents does not cost a third of the service. It costs
+        <strong style="color:var(--ink);">almost all of it</strong>, because occupancy climbs to 96% and the queue
+        stops draining between calls.
+      </p>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:14px;">
+      <div class="grid g2" style="gap:14px;">
+        <div class="card"><div class="k">Average wait, full</div><div class="stat md" style="margin-top:8px; color:var(--green-deep);">8s</div></div>
+        <div class="card red"><div class="k" style="color:#a33;">Average wait, short</div><div class="stat md red" style="margin-top:8px;">13 min</div></div>
+        <div class="card"><div class="k">Occupancy, full</div><div class="stat md" style="margin-top:8px; color:var(--ink-2);">64%</div></div>
+        <div class="card red"><div class="k" style="color:#a33;">Occupancy, short</div><div class="stat md red" style="margin-top:8px;">96%</div></div>
+      </div>
+      <div class="card soft">
+        <div class="k">What the queue maths gives us</div>
+        <p style="margin-top:8px;">Erlang C service level, speed of answer, abandonment, occupancy, schedule adherence,
+        a day-level rollup, and <code>agents_needed</code> — the last of which is what makes every option
+        comparable on one number.</p>
+        <p style="margin-top:10px; font-size:13px; color:var(--ink-3);">
+          <strong>Honest about the model:</strong> Erlang C assumes Poisson arrivals, exponential handle times,
+          no abandonment, and interchangeable agents. Real WFM tools relax all four. The <em>shape</em> of the
+          answer is what the decision depends on.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ 13 · WHEN NOT TO PANIC ══ -->
+<section class="slide"
+  data-title="Telling the manager when NOT to escalate"
+  data-notes="<p class='say'>&ldquo;Here is the half of the product I am proudest of, because it argues against itself.&rdquo;</p><p class='say'>&ldquo;The interval is on fire. Fifteen percent. But the day rolls up to ninety-two percent, and the contract is written on the day. So the agent says so, in the alert: <strong>the day's eighty percent target still holds</strong>.&rdquo;</p><p class='say'>&ldquo;An alerting system that screams at every red interval gets muted in a week. Ours escalates to operations only when the <strong>day</strong> is genuinely at risk.&rdquo;</p><p class='say'>&ldquo;Telling a manager when not to panic is worth as much as telling them when to. It is also the thing that makes them trust the alert the one morning it really does say escalate.&rdquo;</p>">
+  <div class="eyebrow"><span class="num">12</span> Restraint as a feature</div>
+  <h2>The agent also tells you when <em style="font-style:italic;">not</em> to escalate</h2>
+
+  <div class="body grid g2" style="gap:26px;">
+    <div style="display:flex; flex-direction:column; gap:16px;">
+      <div class="card red">
+        <div class="k" style="color:#a33;">The interval</div>
+        <div class="stat lg red" style="margin:10px 0 8px;">15%</div>
+        <p>Answered in 20 seconds, right now, on Billing Support. Against an 80% target. This looks like a five-alarm fire.</p>
+      </div>
+      <div class="card green">
+        <div class="k" style="color:#2f7a3c;">The day</div>
+        <div class="stat lg green" style="margin:10px 0 8px;">92%</div>
+        <p>Sixteen intervals, zero breached, 736 calls. <strong style="color:var(--ink);">The day service level holds the 80% target.</strong> The contract is written on the day, not the interval.</p>
+      </div>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:16px;">
+      <div class="quote plain" style="font-size:19px;">
+        &ldquo;A twenty-minute gap does not break the day. The interval collapses; the daily number holds.
+        The alert says so, and escalates to operations <strong>only when the day is genuinely at risk</strong>.&rdquo;
+      </div>
+      <div class="card soft">
+        <h3>Why this matters more than the alert itself</h3>
+        <ul class="tight" style="margin-top:10px;">
+          <li>An alerting system that fires on every red interval gets <strong>muted within a week</strong>. Then it protects nothing.</li>
+          <li>Escalating a recoverable morning burns the manager's credibility with operations, and their own time.</li>
+          <li>Restraint is what makes the alert believable on the one morning it does say <em>escalate now</em>.</li>
+        </ul>
+        <p style="margin-top:12px; color:var(--green-deep); font-weight:500;">
+          Not escalating saves as much money as the cover recommendation does.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════ 14 · SENSE REASON ACT ══ -->
+<section class="slide"
+  data-title="Sense · Reason · Act"
+  data-notes="<p class='say'>&ldquo;Now the how. The brief asked for sense, reason, act, so I will use exactly those three words.&rdquo;</p><p class='say'>&ldquo;<strong>Sense</strong> is a clock advancing over the trip data. Every read downstream is guarded by that clock, so nothing can see the future &mdash; which is what makes the demo honest and what makes the swap to a live feed trivial.&rdquo;</p><p class='say'>&ldquo;<strong>Reason</strong> is all deterministic Python. Rider state, arrival, headcount, Erlang C, cause, benchmarks, cover, cost. About fifteen milliseconds a tick, and not one model call.&rdquo;</p><p class='say'>&ldquo;<strong>Act</strong> is where the agent lives, and only when the situation actually changes. It writes the summary and the drafts, and it answers the manager's questions.&rdquo;</p>">
+  <div class="eyebrow"><span class="num">13</span> The loop</div>
+  <h2>Sense, reason, act — and the model is only in the third box</h2>
+
+  <div class="body" style="display:flex; flex-direction:column; gap:18px;">
+    <div class="grid g3" style="gap:18px;">
+      <div class="card" style="border-top:3px solid var(--green);">
+        <div class="k" style="color:var(--green-deep);">Sense</div>
+        <h3 style="margin-top:10px;">A clock over the trip feed</h3>
+        <p>A replay clock advances one minute at a time over real trip events. <strong style="color:var(--ink);">Every read is guarded by <code>now</code></strong>, so nothing downstream can see the future.</p>
+        <p style="margin-top:10px; font-size:13px; color:var(--ink-3);">Swap the replay for a live event consumer and nothing else in the system changes. That is the whole production seam.</p>
+      </div>
+      <div class="card" style="border-top:3px solid var(--green);">
+        <div class="k" style="color:var(--green-deep);">Reason</div>
+        <h3 style="margin-top:10px;">Deterministic Python, ~15 ms</h3>
+        <p>Nine-state rider machine → arrival projection with an uncertainty band → queue headcount → Erlang C and the day rollup → cause → five benchmarks → cover candidates → hold-over cost → alert with priced options.</p>
+        <p style="margin-top:10px; font-size:13px; color:var(--green-deep); font-weight:500;">Zero model calls. Zero per-tick round trips.</p>
+      </div>
+      <div class="card" style="border-top:3px solid var(--violet);">
+        <div class="k" style="color:var(--violet);">Act</div>
+        <h3 style="margin-top:10px;">The agent writes and answers</h3>
+        <p>A Google ADK agent receives the computed alert and writes the summary and the drafts. The same agent answers the manager's questions from the same computed board.</p>
+        <p style="margin-top:10px; font-size:13px; color:var(--ink-3);">It cannot invent a number or a name, because the tools only hand it what was computed.</p>
+      </div>
+    </div>
+
+    <div class="card dark">
+      <div style="display:flex; align-items:center; gap:26px; flex-wrap:wrap;">
+        <div>
+          <div class="k">The trigger discipline</div>
+          <h3 style="margin-top:6px; font-size:19px;">The model writes on five events, not on a timer</h3>
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-left:auto;">
+          <span class="pill violet">alert opens</span>
+          <span class="pill violet">resolves</span>
+          <span class="pill violet">cause changes</span>
+          <span class="pill violet">recommendation changes</span>
+          <span class="pill violet">severity band crossed</span>
+        </div>
+      </div>
+      <p style="margin-top:14px; font-size:15px;">
+        A 150-tick morning across two queues produces <strong style="color:#fff;">11 narratives</strong>, not 300.
+        Everything else is arithmetic. This one decision is most of the cost story on the next-but-one slide.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════════════════════════════════════════════ 15 · ARCHITECTURE ══ -->
+<section class="slide"
+  data-title="Architecture"
+  data-notes="<p class='say'>&ldquo;The architecture in one picture. Green is arithmetic, purple is the model, orange is Postgres. The manager only ever sees the blue box on the left.&rdquo;</p><p class='say'>&ldquo;Read it left to right. The board watches, acts and asks against a FastAPI process. The clock drives the deterministic core. The core saves to Postgres, and only when the situation changes does it wake the narrator.&rdquo;</p><p class='say'>&ldquo;Notice the model boxes are off to one side and nothing depends on them to keep running. If the narrator is down, the board still ticks and the drafts still send from templates.&rdquo;</p><p class='say'>&ldquo;And notice how little purple there is. That is the point.&rdquo;</p>">
+  <div class="eyebrow"><span class="num">14</span> Architecture</div>
+  <h2>Green is arithmetic. Purple is the model.</h2>
+
+  <div class="body" style="display:flex; flex-direction:column; justify-content:center; gap:22px;">
+    <div class="flow" style="align-items:center;">
+      <div class="node ui" style="max-width:150px;">
+        <span class="t">Shift board</span>
+        queues · alerts · chat · story<br>
+        <span style="color:var(--ink-3); font-size:12px;">one HTML file</span>
+      </div>
+      <div class="arrow" style="flex-direction:column; gap:3px;">
+        <span style="font-size:10.5px; color:var(--ink-3); white-space:nowrap;">watch / act / ask</span>
+        <svg width="30" height="12" viewBox="0 0 30 12" fill="none"><path d="M0 6h26m0 0l-5-4m5 4l-5 4" stroke="#b4b1b1" stroke-width="1.5"/></svg>
+      </div>
+      <div class="node" style="max-width:112px; background:#e4edfb; border-color:#a9c4ee;">
+        <span class="t">FastAPI</span>
+        14 endpoints<br>
+        <span style="color:var(--ink-3); font-size:12px;">all tenant-scoped</span>
+      </div>
+      <div class="arrow"><svg width="30" height="12" viewBox="0 0 30 12" fill="none"><path d="M0 6h26m0 0l-5-4m5 4l-5 4" stroke="#b4b1b1" stroke-width="1.5"/></svg></div>
+
+      <div class="lane det" style="flex:1.5;">
+        <span class="lane-label">Deterministic core · Python · ~15 ms per tick</span>
+        <div class="flow" style="gap:0;">
+          <div class="node det"><span class="t">Replay clock</span>guards every read against <code>now</code></div>
+          <div class="arrow"><svg width="26" height="12" viewBox="0 0 26 12" fill="none"><path d="M0 6h22m0 0l-4-4m4 4l-4 4" stroke="#5c9c6a" stroke-width="1.5"/></svg></div>
+          <div class="node det"><span class="t">Reasoning</span>who is late · how short · service level · what to do · what it costs</div>
+        </div>
+      </div>
+
+      <div class="arrow"><svg width="30" height="12" viewBox="0 0 30 12" fill="none"><path d="M0 6h26m0 0l-5-4m5 4l-5 4" stroke="#b4b1b1" stroke-width="1.5"/></svg></div>
+      <div class="node data" style="max-width:118px;">
+        <span class="t">Postgres</span>
+        trips · roster · alerts · actions · sessions
+      </div>
+    </div>
+
+    <div style="display:flex; gap:18px; align-items:center; padding-left:300px;">
+      <svg width="34" height="34" viewBox="0 0 34 34" fill="none" style="flex:none;"><path d="M2 0v22a6 6 0 006 6h22m0 0l-6-4m6 4l-6 4" stroke="#c4b1f2" stroke-width="1.5"/></svg>
+      <div class="lane llm" style="flex:none; width:430px;">
+        <span class="lane-label">Model · only when the situation changes</span>
+        <div class="flow">
+          <div class="node llm"><span class="t">Narrator · 2 tools</span>writes the summary and the drafts</div>
+          <div class="node llm" style="margin-left:12px;"><span class="t">Chat · 7 tools</span>answers from the same computed board</div>
+        </div>
+      </div>
+      <div class="card soft" style="flex:1; padding:14px 18px;">
+        <p style="font-size:14px; margin:0;">
+          <strong style="color:var(--ink);">If the model is down, everything still works.</strong>
+          The board ticks, alerts open and resolve, and every pathway still returns a sendable template draft.
+          The LLM is an enhancement layer, never a dependency.
+        </p>
+      </div>
+    </div>
+
+    <div class="legend" style="justify-content:center; margin-top:4px;">
+      <span><i style="background:#e4edfb; border:1px solid #a9c4ee;"></i>Interface</span>
+      <span><i style="background:#eaf6ec; border:1px solid #9fd6ab;"></i>Deterministic — reproducible, cheap, testable</span>
+      <span><i style="background:#f1ecfd; border:1px solid #c4b1f2;"></i>Model — judgement and language only</span>
+      <span><i style="background:#fdeee1; border:1px solid #f0c49b;"></i>Durable store</span>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════ 16 · ONE TICK ══ -->
+<section class="slide"
+  data-title="One tick, module by module"
+  data-notes="<p class='say'>&ldquo;For the engineers in the room, here is one tick of the clock, module by module. Each of these is a small file with a single job and its own tests.&rdquo;</p><p class='say'>&ldquo;The clock moves. The state machine works out where each of twenty-four people is, using only what <em>now</em> reveals. Arrival projection gives a band, not a point, because with no GPS we owe the manager an honest error bar. Headcount per queue. Erlang C and the day rollup. Benchmarks. Cover search. Then the alert assembles itself with the options already priced.&rdquo;</p><p class='say'>&ldquo;Fifteen milliseconds. A hundred and twelve tests, and each test names the mistake it is guarding against.&rdquo;</p>">
+  <div class="eyebrow"><span class="num">15</span> Code-level flow</div>
+  <h2>One tick of the clock, module by module</h2>
+  <p class="sub">Each file has one job and its own tests. No model call anywhere in this path.</p>
+
+  <div class="body" style="display:flex; flex-direction:column; gap:16px;">
+    <div class="flow" style="gap:0; align-items:stretch;">
+      <div class="node det" style="padding:11px 12px;"><span class="t" style="font-size:13px;">replay.py</span><span style="font-size:12.5px;">advance <code>now</code></span></div>
+      <div class="arrow" style="padding:0 5px;"><svg width="18" height="10" viewBox="0 0 18 10" fill="none"><path d="M0 5h14m0 0l-3-3m3 3l-3 3" stroke="#5c9c6a" stroke-width="1.5"/></svg></div>
+      <div class="node det" style="padding:11px 12px;"><span class="t" style="font-size:13px;">state.py</span><span style="font-size:12.5px;">9-state rider machine</span></div>
+      <div class="arrow" style="padding:0 5px;"><svg width="18" height="10" viewBox="0 0 18 10" fill="none"><path d="M0 5h14m0 0l-3-3m3 3l-3 3" stroke="#5c9c6a" stroke-width="1.5"/></svg></div>
+      <div class="node det" style="padding:11px 12px;"><span class="t" style="font-size:13px;">eta.py</span><span style="font-size:12.5px;">arrival ± spread</span></div>
+      <div class="arrow" style="padding:0 5px;"><svg width="18" height="10" viewBox="0 0 18 10" fill="none"><path d="M0 5h14m0 0l-3-3m3 3l-3 3" stroke="#5c9c6a" stroke-width="1.5"/></svg></div>
+      <div class="node det" style="padding:11px 12px;"><span class="t" style="font-size:13px;">queue.py</span><span style="font-size:12.5px;">headcount, impact range</span></div>
+      <div class="arrow" style="padding:0 5px;"><svg width="18" height="10" viewBox="0 0 18 10" fill="none"><path d="M0 5h14m0 0l-3-3m3 3l-3 3" stroke="#5c9c6a" stroke-width="1.5"/></svg></div>
+      <div class="node det" style="padding:11px 12px;"><span class="t" style="font-size:13px;">sla.py</span><span style="font-size:12.5px;">Erlang C + day rollup</span></div>
+      <div class="arrow" style="padding:0 5px;"><svg width="18" height="10" viewBox="0 0 18 10" fill="none"><path d="M0 5h14m0 0l-3-3m3 3l-3 3" stroke="#5c9c6a" stroke-width="1.5"/></svg></div>
+      <div class="node det" style="padding:11px 12px; border-width:2px;"><span class="t" style="font-size:13px;">alerts.py</span><span style="font-size:12.5px;">trigger, cause, priced options</span></div>
+    </div>
+
+    <div class="flow" style="gap:0; padding-left:calc(52% - 40px);">
+      <div class="node det" style="padding:11px 12px; max-width:200px;"><span class="t" style="font-size:13px;">context.py</span><span style="font-size:12.5px;">five benchmarks — team norm, weekday, recent, peer sites, structural slack</span></div>
+      <div class="node det" style="padding:11px 12px; max-width:200px; margin-left:14px;"><span class="t" style="font-size:13px;">remediation.py</span><span style="font-size:12.5px;">cover candidates verified on the floor; hold-over priced</span></div>
+      <div class="arrow" style="padding:0 4px; align-items:flex-start;" aria-label="feeds into alerts.py above">
+        <svg width="22" height="46" viewBox="0 0 22 46" fill="none"><path d="M0 34h13V6m0 0l-4 4m4-4l4 4" stroke="#5c9c6a" stroke-width="1.5"/></svg>
+      </div>
+    </div>
+
+    <div class="grid g4" style="margin-top:2px;">
+      <div class="card soft"><div class="k">Per tick</div><div class="stat md" style="margin-top:8px;">~15 ms</div><p style="margin-top:6px; font-size:13px;">No model, no per-tick DB round trip. Pooled connections and per-shift caching took the full replay from 18.3 s to 2.29 s.</p></div>
+      <div class="card soft"><div class="k">Tests</div><div class="stat md" style="margin-top:8px;">112</div><p style="margin-top:6px; font-size:13px;">Offline, no spend, ~35 s. Plus 3 live tests behind a marker. Each test names the mistake it guards.</p></div>
+      <div class="card soft"><div class="k">Endpoints</div><div class="stat md" style="margin-top:8px;">14</div><p style="margin-top:6px; font-size:13px;">Every one scoped by business unit, office, date and shift through one <code>Scope</code> dependency.</p></div>
+      <div class="card soft"><div class="k">Rows loaded</div><div class="stat md" style="margin-top:8px;">2.3M</div><p style="margin-top:6px; font-size:13px;">CSV to Postgres via <code>COPY</code> in ~90 s, with nine data quirks handled and each one counted in the load log.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════════════════════════════════════════════ 17 · TECH STACK ══ -->
+<section class="slide"
+  data-title="Tech stack"
+  data-notes="<p class='say'>&ldquo;The stack, quickly. The brief said Java and Angular preferred but not restrictive, and we chose Python and plain HTML for one reason: in a fixed time box we wanted the <strong>reasoning</strong> to be the hard part, not the build tooling.&rdquo;</p><p class='say'>&ldquo;Postgres for everything durable, including the agent's own session store, so there is one thing to back up. FastAPI. Google's Agent Development Kit through LiteLLM, which is why the model is a one-line swap &mdash; OpenAI, Gemini, or a local Llama if the wifi dies.&rdquo;</p><p class='say'>&ldquo;And the front end is one HTML file with no build step. That is a deliberate choice too: it means it can be iframed into their line-manager desk without touching anyone's bundler.&rdquo;</p>">
+  <div class="eyebrow"><span class="num">16</span> Tech stack</div>
+  <h2>Chosen so the reasoning is the hard part</h2>
+  <p class="sub">The brief allows any stack. We optimised for depth of reasoning per hour, and for a clean seam into an existing platform.</p>
+
+  <div class="body grid g3">
+    <div class="card">
+      <div class="k">Data &amp; store</div>
+      <ul class="tight" style="margin-top:12px;">
+        <li><strong>PostgreSQL</strong> — trips, roster, alerts, actions, cover log, narrative cache, <em>and</em> agent sessions</li>
+        <li><strong>SQL views</strong> carry the history maths, so benchmarks are a query not a job</li>
+        <li><strong>COPY</strong> bulk load — 2.3M rows in ~90 s</li>
+        <li><strong>psycopg 3</strong> with a connection pool</li>
+        <li><strong>pandas / pyarrow</strong> for the one-off load and quirk reconciliation</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="k">Reasoning &amp; API</div>
+      <ul class="tight" style="margin-top:12px;">
+        <li><strong>Python 3.12</strong>, pure functions, no framework in the core</li>
+        <li><strong>Erlang C</strong> implemented directly — service level, ASA, abandonment, occupancy, adherence</li>
+        <li><strong>FastAPI + uvicorn</strong>, 14 endpoints, one <code>Scope</code> dependency for tenancy</li>
+        <li><strong>pytest</strong> — 112 offline tests, 3 live behind a marker</li>
+        <li><strong>uv</strong> for dependency resolution and running</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="k">Agent &amp; interface</div>
+      <ul class="tight" style="margin-top:12px;">
+        <li><strong>Google ADK 2.8</strong> — narrator agent (2 tools) and chat agent (7 tools)</li>
+        <li><strong>LiteLLM</strong> adapter — so the model is a <em>one-line swap</em>: OpenAI, Gemini, or local <code>ollama/llama3.2</code></li>
+        <li><strong>ADK DatabaseSessionService</strong> on the same Postgres — one thing to back up</li>
+        <li><strong>One HTML file</strong>, no build step, Inter + Poppins, MoveInSync palette</li>
+        <li><strong>Playwright</strong> for reproducible screenshots</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="kicker">
+    <strong>Why not Java and Angular?</strong> The brief calls them preferred, not required. In a fixed time box the
+    scarce resource was reasoning depth, not language familiarity — and none of the four evaluation criteria are
+    language-specific. The seam into their platform is an HTTP boundary and a Postgres schema, both of which are
+    language-agnostic.
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════ 18 · DETERMINISTIC vs MODEL ══ -->
+<section class="slide"
+  data-title="The deterministic / model split"
+  data-notes="<p class='say'>&ldquo;This table is our central engineering argument, so I want to be explicit about it.&rdquo;</p><p class='say'>&ldquo;Everything on the left is computed in Python. Everything on the right is written by the model. The line between them is not aesthetic &mdash; it follows one rule: <strong>if a number could end up in front of a director, a language model must not have produced it.</strong>&rdquo;</p><p class='say'>&ldquo;Two consequences. First, the same morning gives the same numbers every time, which means you can compare two options honestly. Second, when the model is asked which two of five facts to lead with, it is doing something it is genuinely good at &mdash; judgement and language &mdash; instead of arithmetic, which it is bad at.&rdquo;</p><p class='say'>&ldquo;This is what we mean by AI solving a real problem rather than decorating the solution.&rdquo;</p>">
+  <div class="eyebrow"><span class="num">17</span> Agentic design</div>
+  <h2>Where the model is, and where it is deliberately not</h2>
+
+  <div class="body grid g2" style="gap:26px;">
+    <div>
+      <table>
+        <thead><tr><th style="width:50%;">Computed in Python</th><th>Written by the model</th></tr></thead>
+        <tbody>
+          <tr><td>rider state, arrival, headcount</td><td>which two of five facts to lead with</td></tr>
+          <tr><td>service level, day rollup, adherence</td><td>the five sentences of the summary</td></tr>
+          <tr><td>cause, triggers, option scores</td><td>the message to the shift lead</td></tr>
+          <tr><td>who can cover, what it costs</td><td>the answer to a manager's question</td></tr>
+        </tbody>
+      </table>
+      <div class="quote" style="margin-top:20px; font-size:18px;">
+        The rule: <strong>if a number could end up in front of a director, a language model must not have produced it.</strong>
+      </div>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:14px;">
+      <div class="card green">
+        <h3>Why the numbers must be deterministic</h3>
+        <ul class="tight" style="margin-top:10px;">
+          <li>They get <strong style="color:var(--ink);">forwarded to a director</strong>. They must be reproducible on demand.</li>
+          <li>Two options are compared on the same axis. If the axis wobbles, the comparison is meaningless.</li>
+          <li>They must be identical on a re-run, so a decision can be audited three weeks later.</li>
+        </ul>
+      </div>
+      <div class="card violet">
+        <h3>Why the model earns its place anyway</h3>
+        <ul class="tight" style="margin-top:10px;">
+          <li>Five benchmarks are available; leading with all five is unreadable at 08:55. <strong style="color:var(--ink);">Choosing two is judgement</strong>, and it is the model's job.</li>
+          <li>A message a manager will actually forward has to read like a person wrote it.</li>
+          <li>A follow-up question can take any shape. That is a natural-language problem.</li>
+        </ul>
+      </div>
+      <div class="card soft" style="padding:14px 18px;">
+        <p style="margin:0; font-size:14px;"><strong style="color:var(--ink);">The guarantee is structural, not a prompt.</strong>
+        The tools return computed objects. There is no tool that returns raw rows, and scope is not settable by the model.
+        It has nothing to hallucinate <em>from</em>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════ 19 · COST AT SCALE ══ -->
+<section class="slide"
+  data-title="Cost at scale, metered not claimed"
+  data-notes="<p class='say'>&ldquo;Twenty percent of the marks are on agentic design and cost at scale, so we instrumented it rather than asserting it. There is a <code>/usage</code> endpoint and these are its real numbers.&rdquo;</p><p class='say'>&ldquo;A tick costs fifteen milliseconds and zero model calls. A full hundred-and-fifty-minute morning across two queues produces eleven narratives &mdash; not three hundred &mdash; because the model only writes when the situation actually changes.&rdquo;</p><p class='say'>&ldquo;One narrative is about five thousand tokens. Our first working version was twenty-two thousand six hundred. We cut it by four and a half times by moving facts out of the prompt and into tools.&rdquo;</p><p class='say'>&ldquo;And there is a cache keyed on the situation, so the same morning next Tuesday costs nothing at all.&rdquo;</p>">
+  <div class="eyebrow"><span class="num">18</span> Cost &amp; latency at enterprise volume</div>
+  <h2>Metered, not claimed — there is a <code>/usage</code> endpoint</h2>
+  <p class="sub">Twenty percent of the rubric is inference cost, latency and efficiency at scale. So we measured it.</p>
+
+  <div class="body" style="display:flex; flex-direction:column; gap:18px;">
+    <div class="grid g4">
+      <div class="card"><div class="k">Cost of one tick</div><div class="stat lg green" style="margin:10px 0 6px;">15 ms</div><p>And <strong style="color:var(--ink);">zero</strong> model calls. The expensive part of the product is free.</p></div>
+      <div class="card"><div class="k">Narratives per morning</div><div class="stat lg" style="margin:10px 0 6px;">11</div><p>Across 150 ticks and two queues. A naive per-tick agent would make <strong style="color:var(--ink);">300</strong>.</p></div>
+      <div class="card"><div class="k">Tokens per narrative</div><div class="stat lg" style="margin:10px 0 6px;">~5k</div><p>Down from <strong style="color:var(--ink);">22,600</strong> in the first working version — a <strong style="color:var(--ink);">4.5×</strong> cut.</p></div>
+      <div class="card"><div class="k">Latency per narrative</div><div class="stat lg" style="margin:10px 0 6px;">~9 s</div><p>Detached from the clock, so the board never freezes waiting for a model.</p></div>
+    </div>
+
+    <div class="grid g2" style="gap:16px;">
+      <div class="card soft">
+        <h3>How the cost was cut 4.5×</h3>
+        <ul class="tight" style="margin-top:10px;">
+          <li><strong>Facts moved out of the prompt and into tools.</strong> The model fetches what it needs instead of being handed everything.</li>
+          <li><strong>A throwaway conversation per write-up.</strong> No transcript accumulating across a morning.</li>
+          <li><strong>Narrative cache keyed by payload hash.</strong> The same situation next Tuesday costs nothing.</li>
+          <li><strong>Five change triggers instead of a timer.</strong> This is the single biggest saving.</li>
+        </ul>
+      </div>
+      <div class="card dark">
+        <h3>What this means at enterprise volume</h3>
+        <p style="margin-top:8px;">The reasoning core does <strong style="color:#fff;">no model calls and no per-tick database round trips</strong>.
+        Scaling to a thousand shifts scales a 15 ms pure function, which is an ordinary capacity problem with an ordinary answer.</p>
+        <p style="margin-top:10px;">Model spend scales with <strong style="color:#fff;">situations that changed</strong>, not with shifts,
+        minutes, or users. A quiet morning at a well-run site costs nothing at all.</p>
+        <p style="margin-top:10px; color:#9fd6ab;">That is the difference between an agent you can deploy and a demo you can afford to run once.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════════════════════════════════════ 20 · BUSINESS FOR MIS ══ -->
+<section class="slide"
+  data-title="Business perspective — why MoveInSync should care"
+  data-notes="<p class='say'>&ldquo;Now the business case, and I want to make it from MoveInSync's side of the table, not ours.&rdquo;</p><p class='say'>&ldquo;MoveInSync sells commute. Commute is procured, benchmarked on price, and switchable. It is a hard place to defend a margin.&rdquo;</p><p class='say'>&ldquo;This product takes data they <em>already own</em> and turns it into something a client's operations team depends on at nine every morning. That changes the conversation. Transport stops being a line item that procurement squeezes and becomes a system that the floor cannot run without.&rdquo;</p><p class='say'>&ldquo;And the specific segment where this bites hardest is BPO and twenty-four-seven support. Those contracts are won on service level and lost on overtime. A late cab is only their problem when it becomes an unmanned desk &mdash; and that is precisely the translation nobody is doing today.&rdquo;</p>">
+  <div class="eyebrow"><span class="num">19</span> Business perspective</div>
+  <h2>Why MoveInSync should want to own this layer</h2>
+  <p class="sub">Commute is procured on price and switchable. Floor readiness is not.</p>
+
+  <div class="body grid g2">
+    <div class="card">
+      <div class="k">1 · Defend the account</div>
+      <h3 style="margin-top:10px;">Move from a line item to a dependency</h3>
+      <p>Transport is procured, benchmarked and re-tendered on price. The moment a client's line managers start their
+      shift on this board, transport becomes <strong style="color:var(--ink);">operational infrastructure</strong> rather than a cost line.</p>
+      <p style="margin-top:10px; font-size:13.5px; color:var(--ink-3);">Switching vendor now means retraining every floor manager, not re-running a price comparison.</p>
+    </div>
+    <div class="card">
+      <div class="k">2 · Win the segment that pays most</div>
+      <h3 style="margin-top:10px;">BPO and 24/7 enterprise support</h3>
+      <p>These contracts are <strong style="color:var(--ink);">won on service level and lost on hold-over and overtime</strong>.
+      They are also the accounts where commute spend is highest and scrutiny is heaviest.</p>
+      <p style="margin-top:10px; font-size:13.5px; color:var(--ink-3);">A late cab is their problem only once it becomes an unmanned desk. Nobody currently makes that translation. This does.</p>
+    </div>
+    <div class="card">
+      <div class="k">3 · New value from existing data</div>
+      <h3 style="margin-top:10px;">Zero new data collection</h3>
+      <p>Pickup times, drop times, no-shows, vendors — <strong style="color:var(--ink);">MoveInSync already has all of it</strong>.
+      This is a reasoning layer on data already being paid for and already flowing.</p>
+      <p style="margin-top:10px; font-size:13.5px; color:var(--ink-3);">No new hardware, no new integrations, no client-side instrumentation. The margin on the second sale is very different from the first.</p>
+    </div>
+    <div class="card">
+      <div class="k">4 · A third seat at the client</div>
+      <h3 style="margin-top:10px;">Reach the line manager, not just the admin</h3>
+      <p>Today MoveInSync's user is the transport admin. This product gives them a daily relationship with
+      <strong style="color:var(--ink);">every line manager on every floor</strong> — dozens of users per site instead of one.</p>
+      <p style="margin-top:10px; font-size:13.5px; color:var(--ink-3);">Daily-active line managers are the strongest renewal signal an enterprise product can have, and the natural route to a per-seat tier.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════ 21 · THE MONEY ══ -->
+<section class="slide"
+  data-title="The money, from the demo's own numbers"
+  data-notes="<p class='say'>&ldquo;Let me put numbers on it, and let me be honest about which are measured and which are assumed.&rdquo;</p><p class='say'>&ldquo;On this one morning, on two queues at one site, the agent priced the do-nothing option at seven ninety-nine on Billing and one thousand two hundred and thirty-four on Technical Support. That is roughly two thousand of avoidable overtime, on <em>one</em> morning, at <em>one</em> site.&rdquo;</p><p class='say'>&ldquo;Clearwater runs forty-six percent of its nine o'clock shifts late. So this is not a rare morning, it is most Thursdays.&rdquo;</p><p class='say'>&ldquo;The honest caveat, and I will say it before you ask: the overtime rate is synthetic and lives in config. Swap in the client's real rate and the arithmetic holds. What is <em>not</em> synthetic is the shortfall, the timing, the people, and the service level.&rdquo;</p><p class='say'>&ldquo;And the soft saving is probably bigger. Twenty minutes of assembling data, every morning, per manager, per floor.&rdquo;</p>">
+  <div class="eyebrow"><span class="num">20</span> The money</div>
+  <h2>What one morning costs, priced by the agent itself</h2>
+
+  <div class="body grid g2" style="gap:26px;">
+    <div>
+      <div class="card" style="padding:0; overflow:hidden;">
+        <div style="background:var(--ground); padding:11px 20px; border-bottom:1px solid var(--rule);" class="k">Hold-over cost if nobody acts · 11 June 2026 · Clearwater Campus</div>
+        <table style="font-size:15px;">
+          <thead><tr><th style="padding-left:20px;">Queue</th><th>Agents held</th><th>Minutes</th><th>Missed cabs</th><th style="text-align:right; padding-right:20px;">Cost</th></tr></thead>
+          <tbody>
+            <tr><td style="padding-left:20px;"><strong>Billing Support</strong></td><td class="n">4</td><td class="n">19 past end</td><td class="n">4</td><td class="n" style="text-align:right; padding-right:20px; font-weight:600; color:var(--red);">799</td></tr>
+            <tr><td style="padding-left:20px;"><strong>Technical Support</strong></td><td class="n">4</td><td class="n">29 past end</td><td class="n">4</td><td class="n" style="text-align:right; padding-right:20px; font-weight:600; color:var(--red);">1,234</td></tr>
+            <tr style="background:var(--red-tint);"><td style="padding-left:20px;"><strong>One morning, one site</strong></td><td class="n">8</td><td class="n">—</td><td class="n">8</td><td class="n" style="text-align:right; padding-right:20px; font-weight:700; color:var(--red); font-size:18px;">≈ 2,033</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="grid g2" style="margin-top:16px; gap:14px;">
+        <div class="card amber">
+          <div class="k" style="color:#a86c00;">Frequency, measured</div>
+          <div class="stat md amber" style="margin:8px 0 6px;">46%</div>
+          <p>of 09:00 shifts at this site run late. This is most Thursdays, not a freak morning.</p>
+        </div>
+        <div class="card green">
+          <div class="k" style="color:#2f7a3c;">Cost of the fix</div>
+          <div class="stat md green" style="margin:8px 0 6px;">0</div>
+          <p>The recommended cover comes from agents <em>already paid and already seated</em>. The saving is the avoided overtime, not a trade.</p>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:14px;">
+      <div class="card soft">
+        <h3>The saving that is probably larger</h3>
+        <p style="margin-top:8px;">The rubric's first criterion is <em>"does it meaningfully reduce manager effort"</em>. Today that
+        manager spends the twenty minutes before every shift assembling a picture from three systems and a phone.
+        Multiply that by every line manager, every floor, every morning. It never appears on a transport invoice —
+        which is exactly why nobody has tried to remove it.</p>
+      </div>
+      <div class="card">
+        <h3>Second-order effects the board makes visible</h3>
+        <ul class="tight" style="margin-top:10px;">
+          <li><strong>Abandoned calls.</strong> At 15% service level, modelled abandonment is 87%. Those are customers, not minutes.</li>
+          <li><strong>Night-shift attrition.</strong> Being held past 09:00 and missing the 09:15 cab home, repeatedly, is how good night staff leave.</li>
+          <li><strong>Cover fairness.</strong> Cover minutes are tracked per person per week, so the same four people are not volunteered every morning.</li>
+        </ul>
+      </div>
+      <div class="card red">
+        <div class="k" style="color:#a33;">Said before you ask</div>
+        <p style="margin-top:8px;"><strong style="color:var(--ink);">The overtime rate is synthetic</strong> and lives in <code>app/config.py</code>.
+        Substitute the client's real rate and the arithmetic is unchanged. <em>Not</em> synthetic: the shortfall,
+        the timing, the people, the service level, and the 46%.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════ 22 · FIT WITH MOVEINSYNC PRODUCT ══ -->
+<section class="slide"
+  data-title="How it plugs into the current MoveInSync product"
+  data-notes="<p class='say'>&ldquo;So how does this actually get into their product? The answer is deliberately boring, and boring is the point.&rdquo;</p><p class='say'>&ldquo;<strong>Do not rewrite anything. Swap the clock.</strong>&rdquo;</p><p class='say'>&ldquo;Our replay clock is a thing that advances <em>now</em> over recorded legs. In production, a consumer of their live trip events advances <em>now</em> instead. That is one file. Rider state, arrival, queues, Erlang, alerts, drafts, and all fourteen endpoints stay exactly as they are, because every one of them was already written to read only what <em>now</em> reveals.&rdquo;</p><p class='say'>&ldquo;They already have a line-manager desk. The board is one HTML file that can be iframed into it, and it is already in their palette. Auth, SSO and tenancy get wrapped the way they already wrap every other desk &mdash; we take business unit and office on every single request.&rdquo;</p>">
+  <div class="eyebrow"><span class="num">21</span> Fit with the existing product</div>
+  <h2>Do not rewrite the system. Swap the clock.</h2>
+  <p class="sub">One seam. Everything downstream was written to read only what <code>now</code> reveals, so nothing else changes.</p>
+
+  <div class="body grid g2" style="gap:30px;">
+    <div>
+      <div style="display:flex; flex-direction:column; gap:0;">
+        <div class="node data" style="max-width:none;"><span class="t">MoveInSync live trip / pickup / drop events</span>already flowing in their platform today</div>
+        <div style="padding:5px 0 5px 26px; color:var(--red); font-size:12.5px; display:flex; align-items:center; gap:8px;">
+          <svg width="12" height="20" viewBox="0 0 12 20" fill="none"><path d="M6 0v16m0 0l-4-4m4 4l4-4" stroke="#cf2e2e" stroke-width="1.5"/></svg>
+          <strong>the only replaced component</strong>
+        </div>
+        <div class="node" style="max-width:none; border-color:var(--red); border-width:2px; background:var(--red-tint);"><span class="t">Event-consuming clock <span style="font-weight:400; color:var(--ink-2);">replaces</span> <code>app/replay.py</code></span>advances <code>now</code> from live events instead of recorded legs</div>
+        <div style="padding:5px 0 5px 26px;"><svg width="12" height="20" viewBox="0 0 12 20" fill="none"><path d="M6 0v16m0 0l-4-4m4 4l4-4" stroke="#b4b1b1" stroke-width="1.5"/></svg></div>
+        <div class="node det" style="max-width:none;"><span class="t">Reasoning core — unchanged</span><code>state</code> → <code>eta</code> → <code>queue</code> → <code>sla</code> → <code>context</code> → <code>remediation</code> → <code>alerts</code></div>
+        <div style="padding:5px 0 5px 26px;"><svg width="12" height="20" viewBox="0 0 12 20" fill="none"><path d="M6 0v16m0 0l-4-4m4 4l4-4" stroke="#b4b1b1" stroke-width="1.5"/></svg></div>
+        <div class="node llm" style="max-width:none;"><span class="t">Agent — unchanged</span>narrator + chat, model swappable by one env var</div>
+        <div style="padding:5px 0 5px 26px;"><svg width="12" height="20" viewBox="0 0 12 20" fill="none"><path d="M6 0v16m0 0l-4-4m4 4l4-4" stroke="#b4b1b1" stroke-width="1.5"/></svg></div>
+        <div class="node ui" style="max-width:none;"><span class="t">Their existing line-manager desk</span>same JSON the demo board already reads — iframe it, or rebuild the view in Angular against the same API</div>
+      </div>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:14px;">
+      <div class="card green">
+        <h3>Why the seam is this clean</h3>
+        <p style="margin-top:8px;">Every read in the system is already guarded by <code>now</code>. Nothing downstream can see
+        the future, whether <code>now</code> comes from a replay or from a Kafka offset. <strong style="color:var(--ink);">The guarantee the
+        demo needs is the same guarantee production needs.</strong></p>
+        <p style="margin-top:8px; font-size:13.5px; color:var(--ink-2);">That was not a lucky accident — it is why the clock exists as its own module with its own tests.</p>
+      </div>
+      <div class="card soft">
+        <h3>What MoveInSync wraps, rather than us building</h3>
+        <ul class="tight" style="margin-top:10px;">
+          <li><strong>Auth and SSO.</strong> They already have a signed-in desk. We take <code>business_unit</code> + <code>office</code> on every request.</li>
+          <li><strong>Tenant envelope.</strong> Their existing <code>x-tenant-id</code> header pattern maps onto our <code>Scope</code> dependency one-to-one.</li>
+          <li><strong>WFM numbers.</strong> Queue handle time, forecast and SLA target come from the client's workforce tool, replacing our synthetic values.</li>
+          <li><strong>Their front end.</strong> Angular against the same JSON, if they would rather not iframe.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ 23 · DEPLOYABILITY ══ -->
+<section class="slide"
+  data-title="Multi-tenancy, latency, deployability"
+  data-notes="<p class='say'>&ldquo;The bonus criterion asks for a credible deployability story: multi-tenancy, latency, cost. Briefly, all three.&rdquo;</p><p class='say'>&ldquo;Multi-tenancy is not a slide claim. Every table and every endpoint is keyed by business unit and office, through a single dependency. Pointing this at another tenant is two environment variables. We can prove it live if you want.&rdquo;</p><p class='say'>&ldquo;Latency: fifteen milliseconds per tick with no model on the clock, and narration detached so the board never blocks.&rdquo;</p><p class='say'>&ldquo;And the honest column on the right is there because we would rather you hear the gaps from us. No auth, no event bus, no GPS. Every one of those is something MoveInSync already has and we deliberately did not rebuild.&rdquo;</p>">
+  <div class="eyebrow"><span class="num">22</span> Deployability</div>
+  <h2>Multi-tenancy, latency, and the gaps we chose</h2>
+
+  <div class="body grid g3">
+    <div class="card green">
+      <div class="k" style="color:#2f7a3c;">Production-shaped — keep</div>
+      <ul class="none" style="margin-top:12px;">
+        <li><span class="tick"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2f9540" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span><div><strong>Tenant-scoped throughout.</strong> Every table and all 14 endpoints keyed by <code>business_unit</code> + <code>office</code>. Another tenant is two env vars.</div></li>
+        <li><span class="tick"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2f9540" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span><div><strong>~15 ms per tick.</strong> No model on the clock, no per-tick DB round trip.</div></li>
+        <li><span class="tick"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2f9540" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span><div><strong>Durable in Postgres,</strong> including agent sessions. One thing to back up.</div></li>
+        <li><span class="tick"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2f9540" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span><div><strong>Graceful degradation.</strong> Model down → templates. Board never stops.</div></li>
+        <li><span class="tick"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2f9540" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span><div><strong><code>/health</code></strong> reports process, mode, and whether a model key is present.</div></li>
+      </ul>
+    </div>
+
+    <div class="card amber">
+      <div class="k" style="color:#a86c00;">Demo-only — do not ship as fact</div>
+      <ul class="tight" style="margin-top:12px;">
+        <li><strong>The replay clock.</strong> A recorded morning, not a live consumer. This is the intended seam.</li>
+        <li><strong>The night shift and handover.</strong> Asserted, because this site's log has no outbound legs near 09:00. Flagged <code>synthetic</code> on the roster row.</li>
+        <li><strong>Queue AHT, call forecast, SLA target, overtime rate.</strong> Synthetic. Replaced by the client's WFM numbers.</li>
+        <li><strong>The story slider.</strong> A presenter tool, not the product. It is <code>app/timeline.py</code> and it is clearly separated.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="k">Deliberately not built</div>
+      <ul class="tight" style="margin-top:12px;">
+        <li><strong>Auth, SSO, API keys.</strong> The brief explicitly does not expect them, and MoveInSync already has a signed-in desk.</li>
+        <li><strong>Multi-region, sharding, an event bus.</strong> Their production plan already talks CDC and Kafka for trip events; that feed <em>is</em> the replacement clock.</li>
+        <li><strong>GPS.</strong> Not in the dataset. See the limitations slide — we handle its absence rather than pretending.</li>
+        <li><strong>The other two personas.</strong> Building one persona properly beats three shallowly, and the rubric rewards landing with the intended user.</li>
+      </ul>
+      <p style="margin-top:12px; font-size:13.5px; color:var(--ink-3);">Runs on Render, Vercel, or Cloud Run. The ADK agent deploys with one command.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ 24 · REAL vs SYNTHETIC ══ -->
+<section class="slide"
+  data-title="Real vs synthetic — said before anyone asks"
+  data-notes="<p class='say'>&ldquo;We are going to volunteer this before anyone asks, because we would rather be trusted than impressive.&rdquo;</p><p class='say'>&ldquo;Everything in the left column is real, from the dataset. The riders, the trips, the pickup and drop times, the no-shows, the vendors. Even the twenty-four person team is real &mdash; those are actual riders who took this shift on forty or more days, so the team was <em>derived</em>, not invented.&rdquo;</p><p class='say'>&ldquo;The right column is synthetic and every item is labelled in the code, not just on this slide.&rdquo;</p><p class='say'>&ldquo;The one that changes the product is the night shift. Clearwater's trip log has no outbound legs anywhere near nine o'clock, so there was no night shift in the data to read. We asserted one, because positional handover &mdash; the rule that a night agent cannot leave until their relief is seated &mdash; is what makes a late arrival cost somebody their morning rather than just thinning a queue.&rdquo;</p>">
+  <div class="eyebrow"><span class="num">23</span> Honesty</div>
+  <h2>What is real, and what we invented</h2>
+  <p class="sub">Every synthetic value is labelled in the code and in the roster, not only on this slide.</p>
+
+  <div class="body grid g2" style="gap:26px;">
+    <div class="card green">
+      <div class="k" style="color:#2f7a3c;">Real — from the dataset</div>
+      <ul class="tight" style="margin-top:12px; font-size:15px;">
+        <li>Riders, trips, pickup and drop times, no-shows, vendors, cabs</li>
+        <li><strong style="color:var(--ink);">The 24-person team</strong> — real riders, selected because they rode this shift on 40+ days</li>
+        <li><strong style="color:var(--ink);">The 24-person cover pool</strong> — same, on the 08:30 shift</li>
+        <li>All five benchmarks: team norm over 64 days, weekday pattern over 12 Thursdays, recent trend, four peer sites, structural slack over 1,413 legs</li>
+        <li>The 46% late rate, the 70% <code>NODELAY</code> rate, the 5-vs-13-minute buffer finding</li>
+        <li>Every arrival time, every projection, every shortfall on the board</li>
+      </ul>
+    </div>
+
+    <div class="card amber">
+      <div class="k" style="color:#a86c00;">Synthetic — and flagged in code</div>
+      <ul class="tight" style="margin-top:12px; font-size:15px;">
+        <li>Which queue a rider serves, handle time, call forecast, service target — in the <code>roster</code> and <code>queues</code> tables</li>
+        <li>Overtime rate, cab-home time, cover fairness counter — in <code>app/config.py</code></li>
+        <li><strong style="color:var(--ink);">The night shift and positional handover</strong> — asserted, and marked <code>synthetic</code> on the roster row</li>
+      </ul>
+      <div style="margin-top:14px; padding-top:14px; border-top:1px solid #e8d3a8;">
+        <p style="font-size:14px;"><strong style="color:var(--ink);">Why we invented the night shift, specifically.</strong>
+        Clearwater's trip log has no outbound legs anywhere near 09:00, so there was no night shift in the data to read.
+        We asserted one because <em>positional handover</em> — a night agent cannot leave until their relief is seated —
+        is what makes a late arrival cost somebody their morning, rather than merely thinning a queue.
+        Remove it and the product is a headcount widget.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="kicker">
+    <strong>The rule we held to:</strong> never let a synthetic number do work that a real one could do.
+    The night shift is the single invention that changes the shape of the product, and it is the one we flag loudest.
+  </div>
+</section>
+
+<!-- ═════════════════════════════════════════════════ 25 · LIMITATIONS ══ -->
+<section class="slide" style="padding-bottom:52px;"
+  data-title="Honest limitations"
+  data-notes="<p class='say'>&ldquo;Four limitations. Each of them changed a design decision, which is why they are worth a slide rather than a footnote.&rdquo;</p><p class='say'>&ldquo;No GPS. The dataset has pickup and drop times only, so once a rider is aboard we are blind until they arrive. That leaves about thirteen minutes of irreducible spread. Our response was not to hide it &mdash; we report impact as a <strong>range</strong>, we show the plus-or-minus on every arrival, and the hard alert trigger is the deterministic 'planned drop has passed and nobody arrived', which has no false positives.&rdquo;</p><p class='say'>&ldquo;The projection is calibrated on ordinary days and reads optimistic on bad ones. We assert that in a test, so nobody later mistakes it for a bug.&rdquo;</p><p class='say'>&ldquo;Erlang C makes four assumptions that real workforce tools relax. We use it because the <em>shape</em> of the answer is what the decision depends on, and their WFM stack can replace that one module later.&rdquo;</p>">
+  <div class="eyebrow"><span class="num">24</span> Limitations</div>
+  <h2 style="margin-bottom:18px;">What we cannot do, and what we did about it</h2>
+
+  <div class="body grid g2" style="gap:13px;">
+    <div class="card">
+      <span class="pill red">Limitation</span>
+      <h3 style="margin-top:12px;">No GPS in the dataset</h3>
+      <p>Pickup and drop times only. Once a rider is aboard, nothing is observable until they arrive —
+      <strong style="color:var(--ink);">~13 minutes of irreducible spread</strong>.</p>
+      <div style="margin-top:12px; padding-top:12px; border-top:1px solid var(--rule-soft);">
+        <div class="k" style="color:var(--green-deep);">What we did</div>
+        <p style="margin-top:6px;">Impact is reported as a <strong style="color:var(--ink);">range</strong>, never a false point
+        estimate, and the ± spread shows on every arrival. The hard trigger is the deterministic
+        <em>"planned drop passed, no arrival"</em> — no false positives, with or without GPS.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <span class="pill red">Limitation</span>
+      <h3 style="margin-top:12px;">The projection is optimistic on bad days</h3>
+      <p>It is calibrated on ordinary mornings. On genuinely bad ones it under-predicts lateness.</p>
+      <div style="margin-top:12px; padding-top:12px; border-top:1px solid var(--rule-soft);">
+        <div class="k" style="color:var(--green-deep);">What we did</div>
+        <p style="margin-top:6px;">This is <strong style="color:var(--ink);">asserted in a test</strong>, so nobody who inherits the
+        code mistakes a known bias for a bug — and so it fails loudly if someone later "fixes" it in the wrong direction.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <span class="pill red">Limitation</span>
+      <h3 style="margin-top:12px;">Erlang C makes four assumptions</h3>
+      <p>Poisson arrivals, exponential handle times, no abandonment, interchangeable agents. Real WFM tools relax all four.</p>
+      <div style="margin-top:12px; padding-top:12px; border-top:1px solid var(--rule-soft);">
+        <div class="k" style="color:var(--green-deep);">What we did</div>
+        <p style="margin-top:6px;">Used it anyway, because <strong style="color:var(--ink);">the shape of the answer is what the
+        decision depends on</strong> — 92% to 15% is the insight, not the third significant figure. It lives in one
+        module, so a client's WFM engine can replace it wholesale.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <span class="pill red">Limitation</span>
+      <h3 style="margin-top:12px;">The night shift is invented</h3>
+      <p>The most load-bearing synthetic element in the build. See the previous slide.</p>
+      <div style="margin-top:12px; padding-top:12px; border-top:1px solid var(--rule-soft);">
+        <div class="k" style="color:var(--green-deep);">What we did</div>
+        <p style="margin-top:6px;">Labelled everywhere — config, roster row, README, and a slide before anyone asks.
+        <strong style="color:var(--ink);">Hold-over minutes are not quoted as measured fact</strong> until a real logout roster exists.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════ 26 · RUBRIC ══ -->
+<section class="slide"
+  data-title="Against the four criteria"
+  data-notes="<p class='say'>&ldquo;Let me close the argument by mapping directly onto your four criteria, because you published the weights and it would be strange of us to ignore them.&rdquo;</p><p class='say'>&ldquo;Thirty-five on business impact: we serve one persona properly, every number is forwardable without rework, and the alert reduces twenty minutes of assembly to one screen and one click.&rdquo;</p><p class='say'>&ldquo;Twenty on agentic design and cost: the model is confined to judgement and language, it fires on five change events rather than a timer, and we metered it rather than claiming it.&rdquo;</p><p class='say'>&ldquo;Twenty on architecture: one seam to production, tenant-scoped throughout, a hundred and twelve tests.&rdquo;</p><p class='say'>&ldquo;Twenty-five on functionality: it runs end to end on your dataset, and I am about to show you.&rdquo;</p>">
+  <div class="eyebrow"><span class="num">25</span> Against the rubric</div>
+  <h2>Mapped to the four published criteria</h2>
+
+  <div class="body">
+    <table style="font-size:15px;">
+      <thead>
+        <tr>
+          <th style="width:60px;">Wt.</th>
+          <th style="width:23%;">Criterion</th>
+          <th>Our evidence</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="stat" style="font-size:26px; color:var(--green-deep);">35</span></td>
+          <td><strong>Business impact &amp; experience</strong><br><span style="font-size:13px; color:var(--ink-3);">Reduces manager effort; surfaces missed decisions; clarity for the persona; leadership-ready and shareable without rework.</span></td>
+          <td>
+            One persona, served completely. Twenty minutes of morning assembly reduced to one screen and one click.
+            Every alert is a forwardable paragraph with five benchmarks behind it, and the draft message needs no editing.
+            The agent surfaces a decision the manager would otherwise miss entirely — <strong>70% of these late arrivals are invisible
+            to the operator's own delay metric.</strong> Hold-over is priced, and it also says when <em>not</em> to escalate.
+          </td>
+        </tr>
+        <tr>
+          <td><span class="stat" style="font-size:26px; color:var(--green-deep);">20</span></td>
+          <td><strong>Agentic design &amp; cost at scale</strong><br><span style="font-size:13px; color:var(--ink-3);">Genuine problem, not decoration; inference cost, latency, efficiency at enterprise volume.</span></td>
+          <td>
+            Senses on a guarded clock, reasons in 15 ms of pure Python, and acts with a recorded decision and a sent message.
+            The model is confined to judgement and language, and fires on <strong>five change events, not a timer</strong> —
+            11 narratives per morning instead of 300. Tokens cut 4.5× from the first working version. A live
+            <code>/usage</code> meter, and a cache that makes a repeat situation free.
+          </td>
+        </tr>
+        <tr>
+          <td><span class="stat" style="font-size:26px; color:var(--green-deep);">20</span></td>
+          <td><strong>Architecture &amp; code quality</strong><br><span style="font-size:13px; color:var(--ink-3);">Sound structure; deployable into an existing platform; choices a team could build on.</span></td>
+          <td>
+            One seam between demo and production: replace the clock. Every table and endpoint tenant-scoped through a single
+            dependency. Modules with one job each and <strong>112 tests that name the mistake they guard against</strong>.
+            The model is a one-line swap. Failure paths designed in, not bolted on.
+          </td>
+        </tr>
+        <tr>
+          <td><span class="stat" style="font-size:26px; color:var(--green-deep);">25</span></td>
+          <td><strong>Functionality</strong><br><span style="font-size:13px; color:var(--ink-3);">It runs — working, demo-able, end to end, on the provided dataset.</span></td>
+          <td>
+            2.3M rows loaded from the provided CSVs with nine documented quirks handled. A full morning replays with alerts
+            opening, narrating, being acted on, and resolving. Chat streams. <strong>Live demo next</strong> — plus a
+            precomputed story mode so a slow network can never cost us the demo.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="kicker">
+    <strong>Deliverables, all present:</strong> source repository · architecture diagram (SVG, PNG, Excalidraw, Mermaid) ·
+    README with setup · sample inputs and outputs in <code>samples/</code> · this deck · live demo.
+  </div>
+</section>
+
+<!-- ═════════════════════════════════════════════════════ 27 · DEMO ══ -->
+<section class="slide"
+  data-title="Live demo — six beats"
+  data-notes="<p class='say'>&ldquo;Right. Let me show you the morning.&rdquo;</p><p><strong>Before you switch:</strong> board already open at <code>localhost:8000</code>, story prepared, second tab ready. Do not prepare the story in front of judges.</p><p><strong>Beat 3 is the one to land.</strong> Read the Billing note aloud, then say: &ldquo;every figure there is computed; the model only chose the order and wrote the sentences.&rdquo;</p><p><strong>Beat 4:</strong> click the green button and let them watch the draft appear. Say the four names. Point out they are verifiably already on the floor.</p><p><strong>Beat 5:</strong> ask chat &ldquo;Who covered this morning, and how much overtime did we avoid?&rdquo; and let the tokens stream.</p><p><strong>If anything fails:</strong> switch to the story slider. It is precomputed, and it is not a trick &mdash; every snapshot is the same deterministic function evaluated at that minute, with the same guard against reading the future.</p>">
+  <div class="eyebrow"><span class="num">26</span> Live demo</div>
+  <h2>One real morning, in six beats</h2>
+  <p class="sub">11 June 2026 · Clearwater Campus · the 09:00 shift. Landmarks are read off the event feed, not hand-placed.</p>
+
+  <div class="body" style="display:flex; flex-direction:column; gap:16px;">
+    <div class="grid g3" style="gap:14px;">
+      <div class="card"><div style="display:flex; justify-content:space-between; align-items:baseline;"><span class="stat md">07:45</span><span class="pill green">green</span></div><p style="margin-top:10px;">Board is green. 24 rostered, nobody due yet. This is what a good morning looks like.</p></div>
+      <div class="card amber"><div style="display:flex; justify-content:space-between; align-items:baseline;"><span class="stat md amber">08:12</span><span class="pill amber">first amber</span></div><p style="margin-top:10px;">The cab for Agent 20 has not left its depot, 32 minutes late. Sensed before any human noticed.</p></div>
+      <div class="card amber"><div style="display:flex; justify-content:space-between; align-items:baseline;"><span class="stat md amber">08:25</span><span class="pill amber">alert opens</span></div><p style="margin-top:10px;">Billing Support alert opens at 92% projected coverage. The written narrative arrives seconds later.</p></div>
+      <div class="card red"><div style="display:flex; justify-content:space-between; align-items:baseline;"><span class="stat md red">08:47</span><span class="pill red">escalating</span></div><p style="margin-top:10px;">Agent 15 not collected, the cab has passed. The alert now offers "Call the unaccounted riders".</p></div>
+      <div class="card red" style="border-width:2px; border-color:var(--red);"><div style="display:flex; justify-content:space-between; align-items:baseline;"><span class="stat md red">08:55</span><span class="pill red">the crunch</span></div><p style="margin-top:10px;"><strong style="color:var(--ink);">Billing at 67%, service level 15%.</strong> Click the green option. The draft appears under Sent, naming four people verifiably on the floor.</p></div>
+      <div class="card green"><div style="display:flex; justify-content:space-between; align-items:baseline;"><span class="stat md green">09:19</span><span class="pill green">resolves</span></div><p style="margin-top:10px;">Billing back to 83%. The alert resolves itself. Then ask chat: <em>"Who covered this morning, and how much overtime did we avoid?"</em></p></div>
+    </div>
+
+    <div class="card dark">
+      <div style="display:flex; gap:26px; align-items:flex-start;">
+        <div style="flex:1;">
+          <h3>The story slider is precomputed — and that is not a trick</h3>
+          <p style="margin-top:8px;">Every minute from 07:30 to 10:00 is captured, with the landmarks derived from the event feed.
+          <strong style="color:#fff;">Every snapshot is the same deterministic function the live clock runs</strong>, evaluated at that
+          minute, with the same guard against reading the future. The narratives are real model output, produced in order,
+          so the write-up at 08:25 is the one that was written at 08:25.</p>
+        </div>
+        <div style="flex:none; width:290px;">
+          <div class="k">Why it exists</div>
+          <p style="margin-top:8px; font-size:14px;">So that a slow network, a rate limit, or an empty API balance can never
+          cost us a demo. <strong style="color:#fff;">"Back to live" returns to the running clock at any moment.</strong></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ 28 · CLOSE ══ -->
+<section class="slide title-slide"
+  data-title="Close — Team NEON"
+  data-notes="<p class='say'>&ldquo;To close.&rdquo;</p><p class='say'>&ldquo;MoveInSync already sees the whole commute. The line manager sees a delay flag that is often stamped NODELAY while the desk is still empty.&rdquo;</p><p class='say'>&ldquo;We replayed one real morning on their own trip log. At 08:55 Billing is four short, service level fifteen percent, and the night shift is about to be held past the end of an eight-hour shift. The numbers are arithmetic. The model only writes the sentence and the draft. One click moves four people who are already on the floor, with the message ready to send and the overtime priced.&rdquo;</p><p class='say'>&ldquo;Swap the replay for their live trip feed and the same API sits inside the line-manager desk they already have.&rdquo;</p><p class='say'>&ldquo;That is how commute data becomes floor readiness. Thank you &mdash; we are Team NEON, and we are happy to take questions.&rdquo;</p>">
+  <div class="deck-head" style="display:flex; align-items:center; justify-content:space-between;">
+    <div class="wordmark"><span class="mark"></span>MoveInSync <span class="product">Hackathon 2026</span></div>
+    <div class="team-badge"><span class="dot"></span><span class="label">Team</span> NEON</div>
+  </div>
+
+  <h2 style="font-size:41px; max-width:26ch; margin-bottom:18px;">MoveInSync already sees the commute. Nobody was translating it for the floor.</h2>
+  <p class="sub" style="font-size:20px; max-width:74ch;">
+    One real morning, on their own trip log. At 08:55 Billing is four short, service level 15%, and the night shift is
+    about to be held. <strong>The numbers are arithmetic; the model writes the sentence and the draft.</strong>
+    One click moves four people already on the floor — message ready, overtime priced. Swap the replay for a live
+    trip feed and the same API sits in the desk they already have.
+  </p>
+
+  <div class="grid g4">
+    <div class="card" style="background:rgba(255,255,255,.7); padding:14px 16px;"><div class="k">Persona</div><p style="margin-top:5px; font-size:14px;">One line manager, served completely.</p></div>
+    <div class="card" style="background:rgba(255,255,255,.7); padding:14px 16px;"><div class="k">Agentic</div><p style="margin-top:5px; font-size:14px;">Senses, reasons, acts. 11 narratives a morning.</p></div>
+    <div class="card" style="background:rgba(255,255,255,.7); padding:14px 16px;"><div class="k">Architecture</div><p style="margin-top:5px; font-size:14px;">One seam to production. 112 tests.</p></div>
+    <div class="card" style="background:rgba(255,255,255,.7); padding:14px 16px;"><div class="k">It runs</div><p style="margin-top:5px; font-size:14px;">2.3M rows. End to end. Live, next.</p></div>
+  </div>
+
+  <div class="title-meta">
+    <div><div class="k">Team</div><div class="v">NEON</div></div>
+    <div><div class="k">Repository</div><div class="v">README · SHIP.md · JURY.md</div></div>
+    <div><div class="k">Samples</div><div class="v">samples/ — every figure in this deck</div></div>
+    <div><div class="k">Run it</div><div class="v">uv sync · uvicorn app.api:app</div></div>
+  </div>
+</section>
+
+</div><!-- /#stage -->
+</div><!-- /#viewport -->
+
+<div id="notes" aria-live="polite"><span class="k">Presenter notes</span><div id="notes-body"></div></div>
+
+<div id="overview" role="dialog" aria-label="Slide overview"></div>
+
+<nav class="hud" aria-label="Presentation controls">
+  <button id="prev" title="Previous slide (←)" aria-label="Previous slide">←</button>
+  <span class="count"><span id="cur">1</span> / <span id="tot">28</span></span>
+  <button id="next" title="Next slide (→)" aria-label="Next slide">→</button>
+  <button id="btn-overview" title="All slides (O)">Overview</button>
+  <button id="btn-notes" title="Presenter notes (N)">Notes</button>
+  <button id="btn-print" title="Export to PDF (P)">PDF</button>
+</nav>
+
+<script>
+(() => {
+  const slides = [...document.querySelectorAll('.slide')];
+  const stage  = document.getElementById('stage');
+  const notes  = document.getElementById('notes-body');
+  const overview = document.getElementById('overview');
+  let i = 0;
+
+  document.getElementById('tot').textContent = slides.length;
+
+  // Fit the fixed 1280x720 stage into whatever viewport we are given, leaving
+  // room for the notes drawer when it is open. A deck must not reflow.
+  const NOTES_H = parseInt(
+    getComputedStyle(document.documentElement).getPropertyValue('--notes-h'), 10
+  );
+
+  function fit() {
+    const pad = 46;
+    const notesH = document.body.classList.contains('notes-open') ? NOTES_H : 0;
+    const k = Math.min(
+      (window.innerWidth - pad) / 1280,
+      (window.innerHeight - pad - notesH) / 720
+    );
+    stage.style.transform = `scale(${k})`;
+    document.getElementById('viewport').style.paddingBottom = notesH + 'px';
+  }
+
+  function show(n) {
+    i = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach((s, x) => s.classList.toggle('on', x === i));
+    document.getElementById('cur').textContent = i + 1;
+    document.getElementById('progress').style.width =
+      ((i + 1) / slides.length * 100) + '%';
+    notes.innerHTML = slides[i].dataset.notes || '<p>—</p>';
+    [...overview.children].forEach((t, x) => t.classList.toggle('here', x === i));
+    location.hash = 's' + (i + 1);
+  }
+
+  slides.forEach((s, x) => {
+    const b = document.createElement('button');
+    b.className = 'thumb';
+    b.innerHTML = `<span class="n">${String(x + 1).padStart(2, '0')}</span>
+                   <span class="t">${s.dataset.title || ''}</span>`;
+    b.onclick = () => { document.body.classList.remove('overview-open'); show(x); fit(); };
+    overview.appendChild(b);
+  });
+
+  const toggle = (cls) => { document.body.classList.toggle(cls); fit(); };
+
+  document.getElementById('prev').onclick = () => show(i - 1);
+  document.getElementById('next').onclick = () => show(i + 1);
+  document.getElementById('btn-notes').onclick = () => toggle('notes-open');
+  document.getElementById('btn-overview').onclick = () => toggle('overview-open');
+  document.getElementById('btn-print').onclick = () => window.print();
+
+  addEventListener('keydown', (e) => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    switch (e.key) {
+      case 'ArrowRight': case 'PageDown': case ' ': show(i + 1); e.preventDefault(); break;
+      case 'ArrowLeft':  case 'PageUp':          show(i - 1); e.preventDefault(); break;
+      case 'Home': show(0); break;
+      case 'End':  show(slides.length - 1); break;
+      case 'n': case 'N': toggle('notes-open'); break;
+      case 'o': case 'O': toggle('overview-open'); break;
+      case 'p': case 'P': window.print(); break;
+      case 'Escape': document.body.classList.remove('overview-open'); fit(); break;
+    }
+  });
+
+  const fromHash = () => Math.max(0, (parseInt(location.hash.slice(2), 10) || 1) - 1);
+
+  addEventListener('resize', fit);
+  addEventListener('hashchange', () => { if (fromHash() !== i) show(fromHash()); });
+  show(fromHash());
+  fit();
+})();
+</script>
+</body>
+</html>
