@@ -220,9 +220,7 @@ dependencies = [
     { name = "google-adk", extra = ["db"] },
     { name = "httpx" },
     { name = "litellm" },
-    { name = "pandas" },
     { name = "psycopg", extra = ["binary", "pool"] },
-    { name = "pyarrow" },
     { name = "python-dotenv" },
     { name = "uvicorn" },
 ]
@@ -232,6 +230,10 @@ dev = [
     { name = "playwright" },
     { name = "pytest" },
 ]
+load = [
+    { name = "pandas" },
+    { name = "pyarrow" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -239,9 +241,7 @@ requires-dist = [
     { name = "google-adk", extras = ["db"], specifier = ">=2.8.0" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "litellm", specifier = ">=1.99.0" },
-    { name = "pandas", specifier = ">=3.0.5" },
     { name = "psycopg", extras = ["binary", "pool"], specifier = ">=3.3.5" },
-    { name = "pyarrow", specifier = ">=25.0.1" },
     { name = "python-dotenv", specifier = ">=1.2.3" },
     { name = "uvicorn", specifier = ">=0.52.4" },
 ]
@@ -250,6 +250,10 @@ requires-dist = [
 dev = [
     { name = "playwright", specifier = ">=1.62.0" },
     { name = "pytest", specifier = ">=9.1.1" },
+]
+load = [
+    { name = "pandas", specifier = ">=3.0.5" },
+    { name = "pyarrow", specifier = ">=25.0.1" },
 ]
 
 [[package]]

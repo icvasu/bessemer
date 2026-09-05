@@ -9,9 +9,7 @@ dependencies = [
     "google-adk[db]>=2.8.0",
     "httpx>=0.28.1",
     "litellm>=1.99.0",
-    "pandas>=3.0.5",
     "psycopg[binary,pool]>=3.3.5",
-    "pyarrow>=25.0.1",
     "python-dotenv>=1.2.3",
     "uvicorn>=0.52.4",
 ]
@@ -20,6 +18,10 @@ dependencies = [
 dev = [
     "playwright>=1.62.0",
     "pytest>=9.1.1",
+]
+load = [
+    "pandas>=3.0.5",
+    "pyarrow>=25.0.1",
 ]
 
 [tool.vercel]

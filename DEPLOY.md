@@ -68,7 +68,7 @@ reachable Postgres, including the Render one above.
 
 1. Push this branch, then go to <https://vercel.com/new> and import
    `github.com/icvasu/bessemer`.
-2. Vercel reads `pyproject.toml` (`tool.vercel.entrypoint = "app.api:app"`)
+2. Vercel reads `pyproject.toml` (`tool.vercel.entrypoint = "main:app"`)
    and `vercel.json`. No build command to set.
 3. Add a Postgres. Easiest: Vercel dashboard → **Storage → Create Database →
    Neon**. That injects `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, and the `PG*`

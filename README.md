@@ -44,7 +44,7 @@ psql -h 127.0.0.1 -U postgres -c "CREATE DATABASE bessemer"
 psql -h 127.0.0.1 -U postgres -d bessemer -f db/schema.sql
 
 # 2. Dataset (place the MoveInSync folder in the repo root, then)
-uv sync
+uv sync --group load
 uv run python -m db.load          # about 90 seconds, 2.3M rows
 uv run python -m db.seed_roster   # 24 riders, a cover pool, a night shift
 

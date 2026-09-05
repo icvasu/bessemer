@@ -1,0 +1,21 @@
+.venv
+.gstack
+.pytest_cache
+.env
+agent/.env
+tests
+docs
+samples
+Dictionary
+deploy
+scratch
+node_modules
+web/dist
+*.csv
+*.parquet
+*.pdf
+*.png
+*.svg
+*.mmd
+*.excalidraw
+MoveInSync - Anonymised Trip-Log Dataset
