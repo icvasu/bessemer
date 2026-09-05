@@ -176,6 +176,18 @@ def test_composing_saves_the_narrative_and_drafts(shift):
     assert "EARLY_SHIFT_COVER" in stored["drafts"]
 
 
+def test_a_string_where_a_number_belongs_is_answered_not_raised(shift):
+    """Observed live: the model sent limit="3", `min("3", 8)` raised, and the
+    exception aborted the turn so the manager got silence instead of an answer.
+    Tools report problems as data precisely so a turn can survive them."""
+    ok = tools.get_cover_candidates("billing", limit="3")
+    assert ok["status"] == "success"
+    assert len(ok["candidates"]) <= 3
+
+    bad = tools.get_cover_candidates("billing", limit="a few")
+    assert bad["status"] == "error"
+
+
 def test_an_invented_figure_is_refused_and_nothing_is_saved(shift):
     """The product claim is that the model cannot state a figure the tools did
     not return. The instruction asks for that; this is what makes it true.
@@ -210,16 +222,36 @@ def test_a_summary_with_a_hole_where_a_figure_was_is_refused(shift):
     assert "gap" in result["error"]
 
 
-def test_a_summary_that_is_really_a_function_call_is_refused(shift):
-    """Observed on a small local model: it wrote the call it was meant to make
-    as the argument, and the board displayed `compose_alert(alert_id=...` to the
-    manager as the morning's summary."""
+@pytest.mark.parametrize("blank", ["", "   \n  "], ids=["empty", "whitespace"])
+def test_a_blank_summary_is_refused(shift, blank):
+    """Observed on a small local model: it calls compose_alert with an empty
+    narrative. Saving it marked the alert narrated, so the tick stopped asking
+    and the board kept a heading with nothing under it."""
     alert_id = shift.id_for("billing")
-    result = tools.compose_alert(
-        alert_id, narrative=f'compose_alert(alert_id={alert_id}, narrative="Billing is short.")'
-    )
+    result = tools.compose_alert(alert_id, narrative=blank)
     assert result["status"] == "error"
-    assert "function call" in result["error"]
+    assert "empty" in result["error"]
+
+    _, alert = shift.alert_for(alert_id)
+    assert alert.narrative is None, "a refused summary must leave the alert unnarrated"
+    assert alert.needs_narrative(shift.replay.now), "the tick must still ask for prose"
+
+
+@pytest.mark.parametrize(
+    "written_out",
+    [
+        'compose_alert(alert_id=1, narrative="Billing is short.")',
+        '{"name":"compose_alert","parameters":{"narrative":"Billing is short."}}',
+    ],
+    ids=["python-call", "json-envelope"],
+)
+def test_a_summary_that_is_really_a_tool_call_is_refused(shift, written_out):
+    """Observed on a small local model, in both shapes: rather than making the
+    call it wrote the call out, and the board printed that to the manager as the
+    morning's summary."""
+    result = tools.compose_alert(shift.id_for("billing"), narrative=written_out)
+    assert result["status"] == "error"
+    assert "tool call" in result["error"]
 
 
 def test_a_grounded_summary_still_saves(shift):

@@ -3,6 +3,8 @@ MoveInSync - Anonymised Trip-Log Dataset/
 # the same dataset dropped at the repo root: ~570 MB, never belongs in git
 *.csv
 *.pdf
+# except the deck, which is a submission deliverable
+!docs/presentation.pdf
 
 # secrets
 .env

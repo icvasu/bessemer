@@ -49,6 +49,7 @@ mostly about not making them.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import time
 from dataclasses import dataclass, field
@@ -295,11 +296,22 @@ async def compose(session: Session, alert: Alert, user_id: str = "line_manager")
         USAGE.cache_hits += 1
         return True
 
+    # The computed figures travel in the prompt rather than waiting to be
+    # fetched. get_alert stays available, but a narrator that has to ask for the
+    # payload before it can write spends a round trip carrying the same bytes,
+    # and a smaller model frequently loses its way between the two calls: it
+    # answers with the text of the call it meant to make, or writes prose from
+    # figures it half-remembers. One turn, facts already in hand, is both
+    # cheaper and markedly more reliable.
+    facts = json.dumps(alert.for_narrative() | {"alert_id": alert_id}, default=str)
     prompt = (
         f"Alert {alert_id} on the {alert.queue} queue has just "
         f"{'opened' if alert.status.value == 'OPEN' else alert.status.value.lower()}"
-        f" at {session.replay.now:%H:%M}. Write it up for the line manager and "
-        f"save it with compose_alert."
+        f" at {session.replay.now:%H:%M}.\n\n"
+        f"These are the computed figures, and the only ones you may state:\n"
+        f"{facts}\n\n"
+        f"Write it up for the line manager and save it by calling compose_alert "
+        f"with alert_id={alert_id}."
     )
     try:
         reply = await asyncio.wait_for(
@@ -316,7 +328,9 @@ async def compose(session: Session, alert: Alert, user_id: str = "line_manager")
     except Exception as exc:  # noqa: BLE001 - the board must survive any failure here
         USAGE.failures += 1
         log.warning("narrative generation failed for alert %s: %s", alert_id, exc)
-        return False
+        # compose_alert may already have committed prose before the call ran out
+        # of time, and prose on the alert is prose the board can show.
+        return alert.narrative is not None
 
     if alert.narrative is None and reply:
         # Smaller models often write the summary and skip compose_alert.

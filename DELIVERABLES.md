@@ -80,7 +80,7 @@ Narrative present and naming only real people. Chat answers from the board. Abou
 
 - [x] `web/index.html` — the board in MoveInSync's palette and type: clock, queue cards with service level, rider table, every open alert with options as buttons, sent log, chat. One file, served at `/`.
 - [x] `README.md` — setup, run, six beats, architecture diagram, what is real, findings, limitations, quirks handled
-- [x] `docs/deck.md` — twelve slides plus the demo
+- [x] `docs/presentation.html` — 28 slides with presenter notes, keyboard nav and a PDF export; `docs/build_deck.py` renders it and fails if any slide overflows its frame
 - [x] `samples/screens/` — desktop, alert panel, mobile
 - [x] Narration detached from the clock so the replay never freezes for a model call
 - [x] Live run at 180x: full morning, alerts narrated, zero failures

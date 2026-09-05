@@ -52,6 +52,8 @@ Then ask chat: *Who covered this morning, and how much overtime did we avoid?*
 
 ## 5. Architecture (say this in under a minute)
 
+Put `docs/architecture.png` on screen and walk it left to right. The three numbered acts on the diagram are the three paragraphs below.
+
 Trip logs live in Postgres. Views do the history maths.
 
 A replay clock is “now”. Nothing downstream can see the future.

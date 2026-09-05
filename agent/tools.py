@@ -199,8 +199,17 @@ def get_cover_candidates(queue: str, limit: int = 3) -> dict[str, Any]:
     if queue not in known:
         return _fail(f"unknown queue {queue!r}; this site runs {sorted(known)}")
 
+    # Models routinely send "3" where the schema says integer, and `min("3", 8)`
+    # raises. An exception in a tool does not degrade gracefully: it aborts the
+    # whole turn and the manager gets silence, which is how a question about the
+    # worst queue came back blank. Coerce, and refuse as data if it will not.
+    try:
+        wanted = int(limit)
+    except (TypeError, ValueError):
+        return _fail(f"limit must be a whole number, not {limit!r}")
+
     people = find_candidates(
-        queue, replay.shift_date, replay.now, replay.office, limit=max(1, min(limit, 8))
+        queue, replay.shift_date, replay.now, replay.office, limit=max(1, min(wanted, 8))
     )
     return {
         "status": "success",
@@ -290,6 +299,18 @@ def compose_alert(
     drafts = {k: v for k, v in proposed.items() if v and k in offered}
     ignored = sorted(k for k, v in proposed.items() if v and k not in offered)
 
+    # A blank summary passes every check below it, so it has to be caught here.
+    # Observed on a small local model: it calls compose_alert with narrative=""
+    # and the empty string saves, which marks the alert narrated and leaves the
+    # board showing a heading with nothing under it. Refusing it keeps the
+    # narrative None, so the tick still knows the write-up is outstanding.
+    if not narrative.strip():
+        return _fail(
+            "nothing was saved: the narrative argument was empty. Put the "
+            "sentences the manager should read in it, using only the figures "
+            "get_alert returned, and call compose_alert again."
+        )
+
     # Check the prose against the figures the model was actually given, before
     # any of it is saved. The drafts are checked with it: a cover request naming
     # an overtime cost nobody computed is forwarded to a real person.
@@ -315,16 +336,20 @@ def compose_alert(
             "place, or write a different sentence that does not need it."
         )
 
-    # Observed on a small local model: it wrote the call it was supposed to make
-    # as the text of the argument, and `compose_alert(alert_id=..., narrative="`
-    # rendered on the board as the morning's summary. A manager's summary never
-    # contains a function call, so this costs nothing and catches a whole family
-    # of malformed turns.
-    if re.search(r"\b(compose_alert|get_alert|record_action|get_shift_board)\s*\(", narrative):
+    # Observed repeatedly on a small local model: rather than making the call it
+    # wrote the call out, once as `compose_alert(alert_id=...)` and once as a
+    # JSON envelope, and the board printed that to the manager as the morning's
+    # summary. The rule that catches every shape of this is that a summary is
+    # prose: it never names a tool and never arrives wrapped in JSON.
+    tool_names = "|".join(t.__name__ for t in ALL_TOOLS)
+    looks_like_a_call = re.search(rf"\b({tool_names})\b", narrative) or narrative.lstrip()[
+        :1
+    ] in {"{", "["}
+    if looks_like_a_call:
         return _fail(
-            "nothing was saved: the summary contains a function call instead of "
-            "prose. Send only the sentences the manager should read as the "
-            "narrative argument."
+            "nothing was saved: the summary is a tool call rather than prose. "
+            "Put only the sentences the manager should read in the narrative "
+            "argument, and make the call itself in the usual way."
         )
 
     alert.narrative = narrative.strip()

@@ -11,8 +11,10 @@ Built on MoveInSync's anonymised trip-log dataset for the **team / line manager*
 | Spoken pitch | [docs/JURY.md](docs/JURY.md) |
 | How this ships (keep vs wrap) | [docs/SHIP.md](docs/SHIP.md) |
 | Sample input / output | [samples/SAMPLE_IO.md](samples/SAMPLE_IO.md) |
-| Slides | [docs/deck.md](docs/deck.md) |
+| Presentation deck | [docs/presentation.html](docs/presentation.html) · [PDF](docs/presentation.pdf) — 28 slides with presenter notes |
 | Host it | Railway — [DEPLOY.md](DEPLOY.md) |
+
+Open the deck in a browser. Arrow keys move, `N` shows the presenter notes, `O` opens the slide grid, `P` exports a PDF. To rebuild the PDF: `uv run python docs/build_deck.py`.
 
 **Stack:** Python 3.12 · FastAPI · Postgres · Google ADK + LiteLLM · one HTML board, no frontend build.
 
@@ -126,39 +128,47 @@ Green is arithmetic. Purple is the model. The manager only sees the board on the
 
 ```mermaid
 flowchart LR
-  classDef ui fill:#dbeafe,stroke:#1e40af,color:#1e3a5f
-  classDef api fill:#93c5fd,stroke:#1e3a5f,color:#1e3a5f
-  classDef det fill:#a7f3d0,stroke:#047857,color:#064e3b
-  classDef llm fill:#ddd6fe,stroke:#6d28d9,color:#4c1d95
-  classDef data fill:#fed7aa,stroke:#c2410c,color:#7c2d12
+  classDef ui fill:#dbeafe,stroke:#1d4ed8,color:#172554
+  classDef api fill:#bfdbfe,stroke:#1d4ed8,color:#172554
+  classDef det fill:#a7f3d0,stroke:#047857,color:#053e2e
+  classDef grd fill:#fef9c3,stroke:#a16207,color:#553206
+  classDef llm fill:#ddd6fe,stroke:#6d28d9,color:#3b0d76
+  classDef dat fill:#fed7aa,stroke:#c2410c,color:#6b2410
 
   UI["Shift board<br/>queues · alerts · chat · story"]:::ui
-  API["FastAPI :8000"]:::api
+  API["FastAPI :8000<br/>scoped by tenant · site · date · shift"]:::api
 
-  subgraph DET["Deterministic core — Python, ~15ms"]
-    CLK["Replay clock"]:::det
-    MATH["Who is late · how short<br/>service level · what to do"]:::det
+  subgraph SENSE["1 · Sense"]
+    CLK["Replay clock<br/>every read guarded by <i>now</i>"]:::det
   end
 
-  subgraph LLM["LLM — only when needed"]
-    NAR["Narrator · 2 tools"]:::llm
-    AST["Chat · 7 tools"]:::llm
+  subgraph REASON["2 · Reason — deterministic Python, ~15 ms a tick"]
+    MATH["who is late · how short · service level<br/>benchmarks · cover · what to do"]:::det
   end
 
-  PG[("Postgres<br/>trips · roster · alerts")]:::data
+  subgraph ACT["3 · Act — only when the situation changes"]
+    BOUND["agent/tools.py — the boundary<br/>finished numbers out, sentences back<br/>an invented figure is rejected"]:::grd
+    LLM["Google ADK · LiteLLM<br/>narrator · chat"]:::llm
+  end
 
-  UI -->|watch / act / ask| API
+  PG[("Postgres<br/>trips · roster · alerts · sessions")]:::dat
+
+  UI <-->|"watch · act · ask"| API
   API --> CLK
+  PG -->|"only what <i>now</i> reveals"| CLK
   CLK --> MATH
-  PG --> CLK
-  MATH -->|save| PG
-  MATH -->|situation changed| NAR
-  API -->|question| AST
-  NAR -->|summary + drafts| API
-  AST -->|answer| API
+  MATH -->|"alerts · decisions"| PG
+  MATH --> BOUND
+  BOUND <--> LLM
+  API -->|"a question"| BOUND
+  BOUND -->|"summary · drafts · answer"| API
 ```
 
-For a slide: [SVG](docs/architecture.svg) · [PNG](docs/architecture.png) · [Excalidraw](docs/architecture.excalidraw)
+The same thing in full detail, module by module — click for the vector version, which is what to drop on a slide:
+
+[![Architecture](docs/architecture.png)](docs/architecture.svg)
+
+Sources: [`docs/architecture.mmd`](docs/architecture.mmd) for the overview above, [`docs/architecture.svg`](docs/architecture.svg) for the detailed one. The PNG is 3200×1800.
 
 The model writes only when an alert opens, resolves, changes cause, changes recommendation, or crosses a severity band. A 150-tick morning across two queues produces about 11 narratives. Everything else is arithmetic.
 
