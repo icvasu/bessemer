@@ -87,7 +87,7 @@ class Session:
         self.hydrate()
         for queue, alert in self.replay.alerts.items():
             self.alert_ids[queue] = store.save_alert(alert)
-        if self.replay.now is not None:
+        if self.replay.now is not None and SESSIONS.get(self.key) is self:
             store.save_clock(
                 self.replay.office,
                 self.replay.shift_date,
