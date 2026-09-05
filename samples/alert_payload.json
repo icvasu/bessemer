@@ -1,0 +1,838 @@
+{
+  "techsupport": {
+    "queue": "techsupport",
+    "queue_name": "Technical Support",
+    "office": "Clearwater Campus",
+    "business_unit": "pinnacle-Slc",
+    "shift_date": "2026-06-11",
+    "shift_type": "09:00",
+    "status": "OPEN",
+    "cause": "EN_ROUTE_DELAY",
+    "coverage_pct": 67,
+    "triggers": [
+      "coverage 67% below the 75% floor",
+      "1 still out and projected more than 15 min late, worst 24 min"
+    ],
+    "riders_affected": [
+      {
+        "stwid": 10775,
+        "name": "Agent 02",
+        "queue": "techsupport",
+        "state": "PICKED_UP",
+        "risk": "AT_RISK",
+        "eta": "2026-06-11T08:55:00",
+        "eta_spread_min": 17.0,
+        "eta_basis": "pickup + own planned travel + median overshoot (running behind)",
+        "minutes_late": -10.0,
+        "vendor": "Divya Sokolov Travel",
+        "pickup_type": "NODAL"
+      },
+      {
+        "stwid": 95490,
+        "name": "Agent 16",
+        "queue": "techsupport",
+        "state": "PICKED_UP",
+        "risk": "AT_RISK",
+        "eta": "2026-06-11T08:57:45.500000",
+        "eta_spread_min": 18.3,
+        "eta_basis": "pickup + own planned travel + median overshoot",
+        "minutes_late": -7.2,
+        "vendor": "Rahul Mikhailov Travel",
+        "pickup_type": "NODAL"
+      },
+      {
+        "stwid": 385,
+        "name": "Agent 08",
+        "queue": "techsupport",
+        "state": "PICKED_UP",
+        "risk": "AT_RISK",
+        "eta": "2026-06-11T08:57:53",
+        "eta_spread_min": 18.6,
+        "eta_basis": "pickup + own planned travel + median overshoot",
+        "minutes_late": -7.1,
+        "vendor": "Pooja Mikhailov Travel",
+        "pickup_type": "HOME"
+      },
+      {
+        "stwid": 108395,
+        "name": "Agent 24",
+        "queue": "techsupport",
+        "state": "PICKED_UP",
+        "risk": "AT_RISK",
+        "eta": "2026-06-11T09:02:54.500000",
+        "eta_spread_min": 18.3,
+        "eta_basis": "pickup + own planned travel + median overshoot",
+        "minutes_late": -2.1,
+        "vendor": "Sanjay Mikhailov Travel",
+        "pickup_type": "NODAL"
+      },
+      {
+        "stwid": 582895,
+        "name": "Agent 12",
+        "queue": "techsupport",
+        "state": "PICKED_UP",
+        "risk": "AT_RISK",
+        "eta": "2026-06-11T09:03:31.500000",
+        "eta_spread_min": 18.3,
+        "eta_basis": "pickup + own planned travel + median overshoot",
+        "minutes_late": -1.5,
+        "vendor": "Arjun Mikhailov Travel",
+        "pickup_type": "NODAL"
+      },
+      {
+        "stwid": 93550,
+        "name": "Agent 04",
+        "queue": "techsupport",
+        "state": "PICKED_UP",
+        "risk": "AT_RISK",
+        "eta": "2026-06-11T09:04:56.500000",
+        "eta_spread_min": 18.3,
+        "eta_basis": "pickup + own planned travel + median overshoot",
+        "minutes_late": -0.1,
+        "vendor": "Amit Mikhailov Travel",
+        "pickup_type": "NODAL"
+      },
+      {
+        "stwid": 342985,
+        "name": "Agent 10",
+        "queue": "techsupport",
+        "state": "PICKED_UP",
+        "risk": "LATE",
+        "eta": "2026-06-11T09:06:44",
+        "eta_spread_min": 16.8,
+        "eta_basis": "pickup + own planned travel + median overshoot",
+        "minutes_late": 1.7,
+        "vendor": "Sanjay Mikhailov Travel",
+        "pickup_type": "NODAL"
+      },
+      {
+        "stwid": 554350,
+        "name": "Agent 06",
+        "queue": "techsupport",
+        "state": "PICKED_UP",
+        "risk": "LATE",
+        "eta": "2026-06-11T09:07:44",
+        "eta_spread_min": 16.8,
+        "eta_basis": "pickup + own planned travel + median overshoot",
+        "minutes_late": 2.7,
+        "vendor": "Rahul Mikhailov Travel",
+        "pickup_type": "NODAL"
+      },
+      {
+        "stwid": 319560,
+        "name": "Agent 14",
+        "queue": "techsupport",
+        "state": "PICKED_UP",
+        "risk": "LATE",
+        "eta": "2026-06-11T09:12:20",
+        "eta_spread_min": 17.2,
+        "eta_basis": "pickup + own planned travel + median overshoot",
+        "minutes_late": 7.3,
+        "vendor": "Rahul Orlov Travel",
+        "pickup_type": "HOME"
+      },
+      {
+        "stwid": 2675,
+        "name": "Agent 20",
+        "queue": "techsupport",
+        "state": "PICKED_UP",
+        "risk": "LATE",
+        "eta": "2026-06-11T09:29:23.500000",
+        "eta_spread_min": 18.3,
+        "eta_basis": "pickup + own planned travel + median overshoot",
+        "minutes_late": 24.4,
+        "vendor": "Rahul Morozov Travel",
+        "pickup_type": "NODAL"
+      }
+    ],
+    "impact": {
+      "agents_missing": 4,
+      "minutes_lost": 36,
+      "minutes_lost_high": 105,
+      "calls_unanswered": 5,
+      "calls_unanswered_high": 15,
+      "calls_range": "5 to 15",
+      "coverage": 0.667,
+      "coverage_pct": 67,
+      "worst_eta": "2026-06-11T09:29:23.500000",
+      "recovered_by": "2026-06-11T09:29:23.500000",
+      "agents_needed": 11,
+      "service_level": {
+        "agents": 8,
+        "offered_load": 7.47,
+        "occupancy": 0.933,
+        "occupancy_pct": 93,
+        "service_level_pct": 22,
+        "target_pct": 80,
+        "target_seconds": 20,
+        "meets_target": false,
+        "asa_seconds": 626,
+        "abandon_pct": 79.4,
+        "backlog_calls": 0,
+        "overloaded": false,
+        "headline": "22% answered in 20s against a 80% target"
+      },
+      "service_level_full": {
+        "agents": 12,
+        "offered_load": 7.47,
+        "occupancy": 0.622,
+        "occupancy_pct": 62,
+        "service_level_pct": 92,
+        "target_pct": 80,
+        "target_seconds": 20,
+        "meets_target": true,
+        "asa_seconds": 9,
+        "abandon_pct": 0.9,
+        "backlog_calls": 0,
+        "overloaded": false,
+        "headline": "92% answered in 20s against a 80% target"
+      },
+      "day": {
+        "intervals_total": 16,
+        "intervals_breached": 0,
+        "day_service_level_pct": 92,
+        "target_pct": 80,
+        "meets_target": true,
+        "calls_total": 512,
+        "calls_answered_late": 40,
+        "backlog_calls": 0,
+        "recoverable": true,
+        "headline": "day service level 92% holds the 80% target"
+      },
+      "adherence": {
+        "rostered": 12,
+        "minutes_scheduled": 5760,
+        "minutes_lost": 36,
+        "worst_case_minutes_lost": 105,
+        "adherence_pct": 99.4,
+        "headline": "99.4% schedule adherence, 36 agent-minutes lost"
+      }
+    },
+    "hold_over": {
+      "agents_held": 4,
+      "minutes": 118,
+      "cost": 1234,
+      "until": "2026-06-11T09:29:23.500000",
+      "missed_cabs": 4,
+      "summary": "4 night agents held 29 min past shift end, 4 would miss the 09:15 cab home"
+    },
+    "context": [
+      {
+        "key": "team_typical",
+        "text": "tracking towards 4 late, about the usual 4 for this team",
+        "value": 4.0,
+        "reference": 4.2,
+        "sample": "64 days of history"
+      },
+      {
+        "key": "weekday",
+        "text": "Thu runs 50% late at this site against 32% on Fri",
+        "value": 0.502,
+        "reference": 0.319,
+        "sample": "12 Thus"
+      },
+      {
+        "key": "recent_weekday",
+        "text": "the last 3 Thus ran 44% late for this team",
+        "value": 0.441,
+        "reference": null,
+        "sample": "3 recent Thus"
+      },
+      {
+        "key": "peer",
+        "text": "Clearwater Campus runs 46% late on the 09:00 shift, worse than the 29% across 4 peer sites",
+        "value": 0.46,
+        "reference": 0.295,
+        "sample": "4 sites"
+      },
+      {
+        "key": "structural_slack",
+        "text": "the plan leaves a median 5 min between drop and shift start, inside the ~13 min spread of journey times, so late arrivals are partly designed in",
+        "value": 5.0,
+        "reference": 13.0,
+        "sample": "1413 legs"
+      }
+    ],
+    "options": [
+      {
+        "pathway": "HOLD_OVER",
+        "label": "Keep the night shift on",
+        "rationale": "Positions stay manned, but 4 night agents held 29 min past shift end, 4 would miss the 09:15 cab home. This is what happens by default if nothing else is decided.",
+        "people": [
+          {
+            "stwid": 9000001,
+            "name": "Night 02",
+            "queue": "techsupport",
+            "shift_ends": "09:00"
+          },
+          {
+            "stwid": 9000003,
+            "name": "Night 04",
+            "queue": "techsupport",
+            "shift_ends": "09:00"
+          },
+          {
+            "stwid": 9000005,
+            "name": "Night 06",
+            "queue": "techsupport",
+            "shift_ends": "09:00"
+          },
+          {
+            "stwid": 9000007,
+            "name": "Night 08",
+            "queue": "techsupport",
+            "shift_ends": "09:00"
+          }
+        ],
+        "cost": {
+          "agents_held": 4,
+          "minutes": 118,
+          "cost": 1234,
+          "until": "2026-06-11T09:29:23.500000",
+          "missed_cabs": 4,
+          "summary": "4 night agents held 29 min past shift end, 4 would miss the 09:15 cab home"
+        },
+        "recommended": false,
+        "agents_after": 12.0,
+        "service_level": {
+          "agents": 12,
+          "offered_load": 7.47,
+          "occupancy": 0.622,
+          "occupancy_pct": 62,
+          "service_level_pct": 92,
+          "target_pct": 80,
+          "target_seconds": 20,
+          "meets_target": true,
+          "asa_seconds": 9,
+          "abandon_pct": 0.9,
+          "backlog_calls": 0,
+          "overloaded": false,
+          "headline": "92% answered in 20s against a 80% target"
+        },
+        "outcome": "92% answered in 20s against a 80% target"
+      },
+      {
+        "pathway": "EARLY_SHIFT_COVER",
+        "label": "Move the early shift onto the queue",
+        "rationale": "4 early-shift agents already on the floor and trained on this queue. The night shift goes home on time.",
+        "people": [
+          {
+            "stwid": 158185,
+            "name": "Agent 28",
+            "queue": "techsupport",
+            "same_queue": true,
+            "arrived_at": "2026-06-11T08:24:59",
+            "cover_minutes_this_week": 0,
+            "pathway": "EARLY_SHIFT_COVER",
+            "note": "same queue, on floor since 08:24, no cover yet this week"
+          },
+          {
+            "stwid": 91625,
+            "name": "Agent 36",
+            "queue": "techsupport",
+            "same_queue": true,
+            "arrived_at": "2026-06-11T08:26:37",
+            "cover_minutes_this_week": 0,
+            "pathway": "EARLY_SHIFT_COVER",
+            "note": "same queue, on floor since 08:26, no cover yet this week"
+          },
+          {
+            "stwid": 94045,
+            "name": "Agent 38",
+            "queue": "techsupport",
+            "same_queue": true,
+            "arrived_at": "2026-06-11T08:27:52",
+            "cover_minutes_this_week": 0,
+            "pathway": "EARLY_SHIFT_COVER",
+            "note": "same queue, on floor since 08:27, no cover yet this week"
+          },
+          {
+            "stwid": 319725,
+            "name": "Agent 40",
+            "queue": "techsupport",
+            "same_queue": true,
+            "arrived_at": "2026-06-11T08:28:06",
+            "cover_minutes_this_week": 0,
+            "pathway": "EARLY_SHIFT_COVER",
+            "note": "same queue, on floor since 08:28, no cover yet this week"
+          }
+        ],
+        "cost": null,
+        "recommended": true,
+        "agents_after": 12.0,
+        "service_level": {
+          "agents": 12,
+          "offered_load": 7.47,
+          "occupancy": 0.622,
+          "occupancy_pct": 62,
+          "service_level_pct": 92,
+          "target_pct": 80,
+          "target_seconds": 20,
+          "meets_target": true,
+          "asa_seconds": 9,
+          "abandon_pct": 0.9,
+          "backlog_calls": 0,
+          "overloaded": false,
+          "headline": "92% answered in 20s against a 80% target"
+        },
+        "outcome": "92% answered in 20s against a 80% target"
+      },
+      {
+        "pathway": "ESCALATE_TRANSPORT",
+        "label": "Escalate to transport",
+        "rationale": "2 of the affected riders are on Rahul Mikhailov Travel. That is a pattern for the transport manager, not this shift.",
+        "people": [
+          {
+            "vendor": "Rahul Mikhailov Travel",
+            "riders_affected": 2
+          }
+        ],
+        "cost": null,
+        "recommended": false,
+        "agents_after": null,
+        "service_level": null,
+        "outcome": ""
+      }
+    ],
+    "opened_at": "2026-06-11T08:01:00",
+    "updated_at": "2026-06-11T08:55:00",
+    "resolved_at": null,
+    "narrative": null,
+    "drafts": {},
+    "payload_hash": "a8ad5b1202eed894"
+  },
+  "billing": {
+    "queue": "billing",
+    "queue_name": "Billing Support",
+    "office": "Clearwater Campus",
+    "business_unit": "pinnacle-Slc",
+    "shift_date": "2026-06-11",
+    "shift_type": "09:00",
+    "status": "OPEN",
+    "cause": "EN_ROUTE_DELAY",
+    "coverage_pct": 67,
+    "triggers": [
+      "coverage 67% below the 75% floor",
+      "1 unaccounted for after their cab passed"
+    ],
+    "riders_affected": [
+      {
+        "stwid": 296055,
+        "name": "Agent 13",
+        "queue": "billing",
+        "state": "PICKED_UP",
+        "risk": "AT_RISK",
+        "eta": "2026-06-11T08:56:12",
+        "eta_spread_min": 17.2,
+        "eta_basis": "pickup + own planned travel + median overshoot",
+        "minutes_late": -8.8,
+        "vendor": "Rahul Morozov Travel",
+        "pickup_type": "HOME"
+      },
+      {
+        "stwid": 406685,
+        "name": "Agent 23",
+        "queue": "billing",
+        "state": "PICKED_UP",
+        "risk": "AT_RISK",
+        "eta": "2026-06-11T08:57:24",
+        "eta_spread_min": 16.8,
+        "eta_basis": "pickup + own planned travel + median overshoot",
+        "minutes_late": -7.6,
+        "vendor": "Amit Mikhailov Travel",
+        "pickup_type": "NODAL"
+      },
+      {
+        "stwid": 530425,
+        "name": "Agent 11",
+        "queue": "billing",
+        "state": "PICKED_UP",
+        "risk": "AT_RISK",
+        "eta": "2026-06-11T08:58:53.500000",
+        "eta_spread_min": 18.3,
+        "eta_basis": "pickup + own planned travel + median overshoot",
+        "minutes_late": -6.1,
+        "vendor": "Amit Mikhailov Travel",
+        "pickup_type": "NODAL"
+      },
+      {
+        "stwid": 407005,
+        "name": "Agent 05",
+        "queue": "billing",
+        "state": "PICKED_UP",
+        "risk": "AT_RISK",
+        "eta": "2026-06-11T09:00:54.500000",
+        "eta_spread_min": 18.3,
+        "eta_basis": "pickup + own planned travel + median overshoot",
+        "minutes_late": -4.1,
+        "vendor": "Divya Kozlov Travel",
+        "pickup_type": "NODAL"
+      },
+      {
+        "stwid": 441670,
+        "name": "Agent 07",
+        "queue": "billing",
+        "state": "PICKED_UP",
+        "risk": "AT_RISK",
+        "eta": "2026-06-11T09:02:28.500000",
+        "eta_spread_min": 18.3,
+        "eta_basis": "pickup + own planned travel + median overshoot",
+        "minutes_late": -2.5,
+        "vendor": "Karan Mikhailov Travel",
+        "pickup_type": "NODAL"
+      },
+      {
+        "stwid": 64185,
+        "name": "Agent 21",
+        "queue": "billing",
+        "state": "PICKED_UP",
+        "risk": "AT_RISK",
+        "eta": "2026-06-11T09:03:25",
+        "eta_spread_min": 16.8,
+        "eta_basis": "pickup + own planned travel + median overshoot",
+        "minutes_late": -1.6,
+        "vendor": "Rahul Orlov Travel",
+        "pickup_type": "NODAL"
+      },
+      {
+        "stwid": 413145,
+        "name": "Agent 19",
+        "queue": "billing",
+        "state": "PICKED_UP",
+        "risk": "AT_RISK",
+        "eta": "2026-06-11T09:04:54.500000",
+        "eta_spread_min": 18.3,
+        "eta_basis": "pickup + own planned travel + median overshoot",
+        "minutes_late": -0.1,
+        "vendor": "Aarav Mikhailov Travel",
+        "pickup_type": "NODAL"
+      },
+      {
+        "stwid": 152910,
+        "name": "Agent 17",
+        "queue": "billing",
+        "state": "PICKED_UP",
+        "risk": "LATE",
+        "eta": "2026-06-11T09:06:24",
+        "eta_spread_min": 16.8,
+        "eta_basis": "pickup + own planned travel + median overshoot",
+        "minutes_late": 1.4,
+        "vendor": "Rohan Mikhailov Travel",
+        "pickup_type": "NODAL"
+      },
+      {
+        "stwid": 182605,
+        "name": "Agent 09",
+        "queue": "billing",
+        "state": "PICKED_UP",
+        "risk": "LATE",
+        "eta": "2026-06-11T09:07:19.500000",
+        "eta_spread_min": 18.3,
+        "eta_basis": "pickup + own planned travel + median overshoot",
+        "minutes_late": 2.3,
+        "vendor": "Rahul Morozov Travel",
+        "pickup_type": "NODAL"
+      },
+      {
+        "stwid": 92400,
+        "name": "Agent 03",
+        "queue": "billing",
+        "state": "PICKED_UP",
+        "risk": "LATE",
+        "eta": "2026-06-11T09:11:27.500000",
+        "eta_spread_min": 18.3,
+        "eta_basis": "pickup + own planned travel + median overshoot",
+        "minutes_late": 6.5,
+        "vendor": "Karan Mikhailov Travel",
+        "pickup_type": "NODAL"
+      },
+      {
+        "stwid": 554845,
+        "name": "Agent 15",
+        "queue": "billing",
+        "state": "NO_PICKUP",
+        "risk": "LATE",
+        "eta": "2026-06-11T09:19:01",
+        "eta_spread_min": 25.2,
+        "eta_basis": "expected pickup + own planned travel + median overshoot",
+        "minutes_late": 14.0,
+        "vendor": "Rohan Mikhailov Travel",
+        "pickup_type": "NODAL"
+      }
+    ],
+    "impact": {
+      "agents_missing": 4,
+      "minutes_lost": 24,
+      "minutes_lost_high": 103,
+      "calls_unanswered": 5,
+      "calls_unanswered_high": 21,
+      "calls_range": "5 to 21",
+      "coverage": 0.667,
+      "coverage_pct": 67,
+      "worst_eta": "2026-06-11T09:19:01",
+      "recovered_by": "2026-06-11T09:19:01",
+      "agents_needed": 11,
+      "service_level": {
+        "agents": 8,
+        "offered_load": 7.67,
+        "occupancy": 0.958,
+        "occupancy_pct": 96,
+        "service_level_pct": 15,
+        "target_pct": 80,
+        "target_seconds": 20,
+        "meets_target": false,
+        "asa_seconds": 782,
+        "abandon_pct": 86.9,
+        "backlog_calls": 0,
+        "overloaded": false,
+        "headline": "15% answered in 20s against a 80% target"
+      },
+      "service_level_full": {
+        "agents": 12,
+        "offered_load": 7.67,
+        "occupancy": 0.639,
+        "occupancy_pct": 64,
+        "service_level_pct": 92,
+        "target_pct": 80,
+        "target_seconds": 20,
+        "meets_target": true,
+        "asa_seconds": 8,
+        "abandon_pct": 0.9,
+        "backlog_calls": 0,
+        "overloaded": false,
+        "headline": "92% answered in 20s against a 80% target"
+      },
+      "day": {
+        "intervals_total": 16,
+        "intervals_breached": 0,
+        "day_service_level_pct": 92,
+        "target_pct": 80,
+        "meets_target": true,
+        "calls_total": 736,
+        "calls_answered_late": 60,
+        "backlog_calls": 0,
+        "recoverable": true,
+        "headline": "day service level 92% holds the 80% target"
+      },
+      "adherence": {
+        "rostered": 12,
+        "minutes_scheduled": 5760,
+        "minutes_lost": 24,
+        "worst_case_minutes_lost": 103,
+        "adherence_pct": 99.6,
+        "headline": "99.6% schedule adherence, 24 agent-minutes lost"
+      }
+    },
+    "hold_over": {
+      "agents_held": 4,
+      "minutes": 76,
+      "cost": 799,
+      "until": "2026-06-11T09:19:01",
+      "missed_cabs": 4,
+      "summary": "4 night agents held 19 min past shift end, 4 would miss the 09:15 cab home"
+    },
+    "context": [
+      {
+        "key": "team_typical",
+        "text": "tracking towards 5 late, about the usual 5 for this team",
+        "value": 5.0,
+        "reference": 5.3,
+        "sample": "64 days of history"
+      },
+      {
+        "key": "weekday",
+        "text": "Thu runs 50% late at this site against 32% on Fri",
+        "value": 0.502,
+        "reference": 0.319,
+        "sample": "12 Thus"
+      },
+      {
+        "key": "recent_weekday",
+        "text": "the last 3 Thus ran 46% late for this team",
+        "value": 0.457,
+        "reference": null,
+        "sample": "3 recent Thus"
+      },
+      {
+        "key": "peer",
+        "text": "Clearwater Campus runs 46% late on the 09:00 shift, worse than the 29% across 4 peer sites",
+        "value": 0.46,
+        "reference": 0.295,
+        "sample": "4 sites"
+      },
+      {
+        "key": "structural_slack",
+        "text": "the plan leaves a median 5 min between drop and shift start, inside the ~13 min spread of journey times, so late arrivals are partly designed in",
+        "value": 5.0,
+        "reference": 13.0,
+        "sample": "1413 legs"
+      }
+    ],
+    "options": [
+      {
+        "pathway": "HOLD_OVER",
+        "label": "Keep the night shift on",
+        "rationale": "Positions stay manned, but 4 night agents held 19 min past shift end, 4 would miss the 09:15 cab home. This is what happens by default if nothing else is decided.",
+        "people": [
+          {
+            "stwid": 9000000,
+            "name": "Night 01",
+            "queue": "billing",
+            "shift_ends": "09:00"
+          },
+          {
+            "stwid": 9000002,
+            "name": "Night 03",
+            "queue": "billing",
+            "shift_ends": "09:00"
+          },
+          {
+            "stwid": 9000004,
+            "name": "Night 05",
+            "queue": "billing",
+            "shift_ends": "09:00"
+          },
+          {
+            "stwid": 9000006,
+            "name": "Night 07",
+            "queue": "billing",
+            "shift_ends": "09:00"
+          }
+        ],
+        "cost": {
+          "agents_held": 4,
+          "minutes": 76,
+          "cost": 799,
+          "until": "2026-06-11T09:19:01",
+          "missed_cabs": 4,
+          "summary": "4 night agents held 19 min past shift end, 4 would miss the 09:15 cab home"
+        },
+        "recommended": false,
+        "agents_after": 12.0,
+        "service_level": {
+          "agents": 12,
+          "offered_load": 7.67,
+          "occupancy": 0.639,
+          "occupancy_pct": 64,
+          "service_level_pct": 92,
+          "target_pct": 80,
+          "target_seconds": 20,
+          "meets_target": true,
+          "asa_seconds": 8,
+          "abandon_pct": 0.9,
+          "backlog_calls": 0,
+          "overloaded": false,
+          "headline": "92% answered in 20s against a 80% target"
+        },
+        "outcome": "92% answered in 20s against a 80% target"
+      },
+      {
+        "pathway": "EARLY_SHIFT_COVER",
+        "label": "Move the early shift onto the queue",
+        "rationale": "4 early-shift agents already on the floor and trained on this queue. The night shift goes home on time.",
+        "people": [
+          {
+            "stwid": 154560,
+            "name": "Agent 27",
+            "queue": "billing",
+            "same_queue": true,
+            "arrived_at": "2026-06-11T08:16:46",
+            "cover_minutes_this_week": 0,
+            "pathway": "EARLY_SHIFT_COVER",
+            "note": "same queue, on floor since 08:16, no cover yet this week"
+          },
+          {
+            "stwid": 415420,
+            "name": "Agent 29",
+            "queue": "billing",
+            "same_queue": true,
+            "arrived_at": "2026-06-11T08:20:19",
+            "cover_minutes_this_week": 0,
+            "pathway": "EARLY_SHIFT_COVER",
+            "note": "same queue, on floor since 08:20, no cover yet this week"
+          },
+          {
+            "stwid": 663395,
+            "name": "Agent 35",
+            "queue": "billing",
+            "same_queue": true,
+            "arrived_at": "2026-06-11T08:20:30",
+            "cover_minutes_this_week": 0,
+            "pathway": "EARLY_SHIFT_COVER",
+            "note": "same queue, on floor since 08:20, no cover yet this week"
+          },
+          {
+            "stwid": 428495,
+            "name": "Agent 31",
+            "queue": "billing",
+            "same_queue": true,
+            "arrived_at": "2026-06-11T08:21:05",
+            "cover_minutes_this_week": 0,
+            "pathway": "EARLY_SHIFT_COVER",
+            "note": "same queue, on floor since 08:21, no cover yet this week"
+          }
+        ],
+        "cost": null,
+        "recommended": true,
+        "agents_after": 12.0,
+        "service_level": {
+          "agents": 12,
+          "offered_load": 7.67,
+          "occupancy": 0.639,
+          "occupancy_pct": 64,
+          "service_level_pct": 92,
+          "target_pct": 80,
+          "target_seconds": 20,
+          "meets_target": true,
+          "asa_seconds": 8,
+          "abandon_pct": 0.9,
+          "backlog_calls": 0,
+          "overloaded": false,
+          "headline": "92% answered in 20s against a 80% target"
+        },
+        "outcome": "92% answered in 20s against a 80% target"
+      },
+      {
+        "pathway": "CONTACT_EMPLOYEE",
+        "label": "Call the unaccounted riders",
+        "rationale": "Their cab has passed without them. A call now is the only thing that still changes the outcome.",
+        "people": [
+          {
+            "stwid": 554845,
+            "name": "Agent 15",
+            "queue": "billing",
+            "state": "NO_PICKUP",
+            "reason": "no pickup recorded well past the expected time"
+          }
+        ],
+        "cost": null,
+        "recommended": false,
+        "agents_after": null,
+        "service_level": null,
+        "outcome": ""
+      },
+      {
+        "pathway": "ESCALATE_TRANSPORT",
+        "label": "Escalate to transport",
+        "rationale": "2 of the affected riders are on Karan Mikhailov Travel. That is a pattern for the transport manager, not this shift.",
+        "people": [
+          {
+            "vendor": "Karan Mikhailov Travel",
+            "riders_affected": 2
+          }
+        ],
+        "cost": null,
+        "recommended": false,
+        "agents_after": null,
+        "service_level": null,
+        "outcome": ""
+      }
+    ],
+    "opened_at": "2026-06-11T08:25:00",
+    "updated_at": "2026-06-11T08:55:00",
+    "resolved_at": null,
+    "narrative": null,
+    "drafts": {},
+    "payload_hash": "d09df37c92cf0735"
+  }
+}

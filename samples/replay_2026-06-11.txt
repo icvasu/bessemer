@@ -1,0 +1,135 @@
+Clearwater Campus  09:00 shift  2026-06-11  24 rostered  deadline 09:05
+
+07:30  bill:  0/12 100%  SL  92%  | tech:  0/12 100%  SL  92% 
+         Agent 02: picked up
+07:35  bill:  0/12 100%  SL  92%  | tech:  0/12 100%  SL  92% 
+07:40  bill:  0/12 100%  SL  92%  | tech:  0/12 100%  SL  92% 
+         Agent 20: cab has not left its depot
+         Agent 22: cab on the road
+07:45  bill:  0/12 100%  SL  92%  | tech:  0/12 100%  SL  92% 
+         Agent 08: cab has not left its depot
+07:50  bill:  0/12 100%  SL  92%  | tech:  0/12  92%  SL  85% 
+         Agent 08: picked up
+07:55  bill:  0/12 100%  SL  92%  | tech:  0/12  92%  SL  85% 
+         Agent 03: cab has not left its depot
+08:00  bill:  0/12  92%  SL  84%  | tech:  0/12  92%  SL  85% 
+         Agent 12: cab on the road
+         Agent 19: cab has not left its depot
+         Agent 22: picked up
+08:05  bill:  0/12  83%  SL  71%! | tech:  0/12  92%  SL  85% 
+         Agent 03: picked up
+         Agent 19: cab on the road
+         Agent 24: cab has not left its depot
+       ! Technical Support: 92% coverage projected, 3 to 5 calls at risk
+08:10  bill:  0/12  92%  SL  84%  | tech:  0/12  92%  SL  85% 
+         Agent 09: cab on the road
+         Agent 12: picked up
+         Agent 16: cab on the road
+         Agent 19: picked up
+         Agent 20: cab on the road
+         Agent 24: picked up
+08:15  bill:  0/12  92%  SL  84%  | tech:  0/12  92%  SL  85% 
+         Agent 01: cab on the road
+         Agent 05: cab has not left its depot
+         Agent 07: cab has not left its depot
+08:20  bill:  0/12  92%  SL  84%  | tech:  0/12  92%  SL  85% 
+         Agent 04: cab has not left its depot
+         Agent 05: picked up
+         Agent 06: cab has not left its depot
+         Agent 07: cab on the road
+         Agent 11: cab has not left its depot
+         Agent 15: cab has not left its depot
+         Agent 16: picked up
+         Agent 20: picked up
+         Agent 23: cab has not left its depot
+08:25  bill:  0/12  92%  SL  84%  | tech:  0/12  92%  SL  85% 
+         Agent 01: picked up
+         Agent 04: cab on the road
+         Agent 06: cab on the road
+         Agent 07: picked up
+         Agent 09: not collected, cab has passed
+         Agent 11: cab on the road
+         Agent 13: cab on the road
+         Agent 14: cab has not left its depot
+         Agent 21: cab has not left its depot
+       ! Billing Support: 92% coverage projected, 1 to 5 calls at risk
+08:30  bill:  0/12  67%  SL  15%! | tech:  0/12  83%  SL  73%!
+         Agent 04: picked up
+         Agent 09: picked up
+         Agent 10: cab has not left its depot
+         Agent 11: picked up
+         Agent 15: cab on the road
+         Agent 17: cab has not left its depot
+         Agent 21: cab on the road
+08:35  bill:  0/12  67%  SL  15%! | tech:  0/12  75%  SL  53%!
+         Agent 13: picked up
+         Agent 17: picked up
+         Agent 18: cab has not left its depot
+         Agent 23: picked up
+08:40  bill:  0/12  67%  SL  15%! | tech:  0/12  67%  SL  22%!
+         Agent 06: picked up
+         Agent 10: cab on the road
+         Agent 18: picked up
+         Agent 21: picked up
+08:45  bill:  0/12  67%  SL  15%! | tech:  0/12  67%  SL  22%!
+         Agent 10: picked up
+         Agent 14: picked up
+08:50  bill:  0/12  67%  SL  15%! | tech:  1/12  67%  SL  22%!
+         Agent 15: not collected, cab has passed
+         Agent 22: on the floor
+08:55  bill:  1/12  67%  SL  15%! | tech:  2/12  67%  SL  22%!
+         Agent 01: on the floor
+         Agent 18: on the floor
+09:00  bill:  1/12  67%  SL  15%! | tech:  2/12  67%  SL  22%!
+         Agent 15: picked up
+09:05  bill:  3/12  67%  SL  15%! | tech:  4/12  75%  SL  53%!
+         Agent 02: on the floor
+         Agent 06: on the floor
+         Agent 13: on the floor
+         Agent 23: on the floor
+09:10  bill:  5/12  42%  SL   0%! | tech:  5/12  42%  SL   0%!
+         Agent 04: on the floor
+         Agent 05: on the floor
+         Agent 11: on the floor
+09:15  bill:  9/12  75%  SL  49%! | tech:  6/12  50%  SL   0%!
+         Agent 07: on the floor
+         Agent 09: on the floor
+         Agent 10: on the floor
+         Agent 15: on the floor
+         Agent 21: on the floor
+09:20  bill: 10/12  83%  SL  71%! | tech:  8/12  67%  SL  22%!
+         Agent 08: on the floor
+         Agent 14: on the floor
+         Agent 19: on the floor
+       ! Billing Support: back to 83% strength
+09:25  bill: 11/12  92%  SL  84%  | tech: 11/12  92%  SL  85% 
+         Agent 12: on the floor
+         Agent 16: on the floor
+         Agent 17: on the floor
+         Agent 24: on the floor
+09:30  bill: 11/12  92%  SL  84%  | tech: 11/12  92%  SL  85% 
+09:35  bill: 11/12  92%  SL  84%  | tech: 11/12  92%  SL  85% 
+09:40  bill: 12/12 100%  SL  92%  | tech: 11/12  92%  SL  85% 
+         Agent 03: on the floor
+09:45  bill: 12/12 100%  SL  92%  | tech: 11/12  92%  SL  85% 
+09:50  bill: 12/12 100%  SL  92%  | tech: 11/12  92%  SL  85% 
+09:55  bill: 12/12 100%  SL  92%  | tech: 12/12 100%  SL  92% 
+         Agent 20: on the floor
+       ! Technical Support: back to 100% strength
+10:00  bill: 12/12 100%  SL  92%  | tech: 12/12 100%  SL  92% 
+
+--- alerts ---
+
+Technical Support  [RESOLVED]  08:05 to 09:55  cause=EN_ROUTE_DELAY
+    service level: 85% at 92% coverage, 92% at full strength
+    day: day service level 92% holds the 80% target  (needs 11 agents)
+    context: tracking towards 8 late, worse than the usual 4 for this team
+    context: Thu runs 50% late at this site against 32% on Fri
+       WAIT
+
+Billing Support  [RESOLVED]  08:25 to 09:20  cause=EN_ROUTE_DELAY
+    service level: 49% at 75% coverage, 92% at full strength
+    day: day service level 92% holds the 80% target  (needs 11 agents)
+    context: tracking towards 9 late, worse than the usual 5 for this team
+    context: Thu runs 50% late at this site against 32% on Fri
+       WAIT

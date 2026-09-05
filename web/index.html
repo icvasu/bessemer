@@ -1,0 +1,798 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shift readiness</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  /* MoveInSync's own palette, read off their site. Charcoal and green are
+     their logo colours; the greys are their section backgrounds. */
+  :root {
+    --ink: #242021;
+    --ink-2: #5c5a5a;
+    --ink-3: #8a8787;
+    --green: #3aae4a;
+    --green-deep: #2f9540;
+    --green-tint: #eaf6ec;
+    --amber: #d98c00;
+    --amber-tint: #fdf3e0;
+    --red: #cf2e2e;
+    --red-tint: #fbe9e9;
+    --paper: #ffffff;
+    --ground: #f5f5f5;
+    --rule: #e4e4e4;
+    --rule-soft: #efefef;
+    --radius: 6px;
+    --sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --display: "Poppins", "Inter", system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--ground); color: var(--ink); }
+  body {
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+
+  /* ------------------------------------------------------------ header */
+  .top {
+    background: var(--paper);
+    border-bottom: 1px solid var(--rule);
+    height: 56px;
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    gap: 20px;
+  }
+  .wordmark {
+    display: flex; align-items: center; gap: 9px;
+    font-family: var(--display); font-weight: 600; font-size: 16px;
+    letter-spacing: -0.01em;
+  }
+  .wordmark .mark {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--green);
+    position: relative;
+  }
+  .wordmark .mark::after {
+    content: ""; position: absolute; inset: 6px;
+    border-radius: 50%; background: var(--paper);
+  }
+  .wordmark .product { color: var(--ink-3); font-weight: 500; }
+  .top .site { margin-left: auto; color: var(--ink-2); }
+  .top .site strong { color: var(--ink); font-weight: 500; }
+
+  /* ------------------------------------------------------------ layout */
+  .page {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 400px;
+    gap: 0;
+    min-height: calc(100vh - 56px);
+  }
+  .floor { padding: 24px 28px 40px; min-width: 0; }
+  .act {
+    background: var(--paper);
+    border-left: 1px solid var(--rule);
+    display: flex; flex-direction: column;
+    min-height: calc(100vh - 56px);
+  }
+  @media (max-width: 1080px) {
+    .page { grid-template-columns: 1fr; }
+    .act { border-left: 0; border-top: 1px solid var(--rule); min-height: 0; }
+  }
+  @media (max-width: 640px) {
+    .clock { font-size: 48px; }
+    th:nth-child(5), td:nth-child(5) { display: none; }
+    .floor { padding: 18px 16px 32px; }
+  }
+
+  /* -------------------------------------------------------------- hero */
+  .hero {
+    display: flex; align-items: flex-end; gap: 32px; flex-wrap: wrap;
+    margin-bottom: 22px;
+  }
+  .clock {
+    font-family: var(--display); font-weight: 600;
+    font-size: 64px; line-height: 1; letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .headline { padding-bottom: 6px; }
+  .headline .big {
+    font-family: var(--display); font-weight: 500;
+    font-size: 26px; line-height: 1.15; letter-spacing: -0.01em;
+  }
+  .headline .big em { font-style: normal; color: var(--green-deep); }
+  .headline .big em.warn { color: var(--amber); }
+  .headline .big em.bad { color: var(--red); }
+  .headline .sub { color: var(--ink-2); margin-top: 4px; }
+
+  .controls {
+    margin-left: auto; padding-bottom: 8px;
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  }
+  .btn {
+    border: 1px solid var(--rule); background: var(--paper);
+    border-radius: var(--radius); padding: 7px 12px;
+    font-weight: 500; font-size: 13px; line-height: 1;
+  }
+  .btn:hover { border-color: var(--ink-3); }
+  .btn.primary { background: var(--green); border-color: var(--green); color: #fff; }
+  .btn.primary:hover { background: var(--green-deep); border-color: var(--green-deep); }
+  .btn.quiet { border-color: transparent; background: transparent; color: var(--ink-2); }
+  .btn.quiet:hover { background: var(--rule-soft); border-color: transparent; }
+  .btn[disabled] { opacity: .45; cursor: default; }
+  .speed { display: inline-flex; border: 1px solid var(--rule); border-radius: var(--radius); overflow: hidden; }
+  .speed button {
+    border: 0; background: var(--paper); padding: 7px 10px; font-size: 13px; color: var(--ink-2);
+  }
+  .speed button + button { border-left: 1px solid var(--rule); }
+  .speed button.on { background: var(--ink); color: #fff; }
+
+  /* ------------------------------------------------------------- story */
+  .story {
+    background: var(--paper); border: 1px solid var(--rule); border-radius: var(--radius);
+    padding: 14px 18px 12px; margin-bottom: 22px;
+  }
+  .story .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .story .title { font-weight: 600; }
+  .story .state { color: var(--ink-3); font-size: 13px; }
+  .story .right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+  .story .badge { font-size: 12px; font-weight: 600; padding: 3px 8px; border-radius: 999px; background: var(--ink); color: #fff; }
+  .track { position: relative; margin: 14px 6px 4px; height: 36px; }
+  .track input[type=range] {
+    -webkit-appearance: none; appearance: none; width: 100%; height: 36px; background: transparent; margin: 0; position: relative; z-index: 2;
+  }
+  .track input[type=range]::-webkit-slider-runnable-track { height: 4px; background: var(--rule); border-radius: 2px; }
+  .track input[type=range]::-moz-range-track { height: 4px; background: var(--rule); border-radius: 2px; }
+  .track input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--ink);
+    border: 3px solid var(--paper); box-shadow: 0 0 0 1px var(--ink); margin-top: -7px; cursor: grab;
+  }
+  .track input[type=range]::-moz-range-thumb {
+    width: 12px; height: 12px; border-radius: 50%; background: var(--ink); border: 3px solid var(--paper); box-shadow: 0 0 0 1px var(--ink); cursor: grab;
+  }
+  .track .marks { position: absolute; left: 9px; right: 9px; top: 16px; height: 4px; z-index: 1; pointer-events: none; }
+  .track .marks i {
+    position: absolute; top: -3px; width: 10px; height: 10px; border-radius: 50%; transform: translateX(-50%);
+    background: var(--ink-3); border: 2px solid var(--paper);
+  }
+  .track .marks i.bad { background: var(--red); }
+  .track .marks i.warn { background: var(--amber); }
+  .track .marks i.ok { background: var(--green); }
+  .track .marks i.mark { background: var(--ink); width: 4px; height: 14px; border-radius: 2px; top: -5px; border: 0; }
+  .track .ticks { display: flex; justify-content: space-between; color: var(--ink-3); font-size: 11.5px; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .landmark {
+    display: flex; align-items: center; gap: 10px; margin-top: 10px; min-height: 30px;
+  }
+  .landmark .now { font-family: var(--display); font-weight: 600; font-size: 18px; font-variant-numeric: tabular-nums; min-width: 60px; }
+  .landmark .what { font-weight: 500; }
+  .landmark .what .dot { margin-right: 8px; }
+  .landmark .nav { margin-left: auto; display: flex; gap: 6px; }
+  .story.hidden-strip { display: none; }
+
+  /* ------------------------------------------------------------ queues */
+  .queues { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-bottom: 26px; }
+  .queue {
+    background: var(--paper); border: 1px solid var(--rule); border-radius: var(--radius);
+    padding: 16px 18px 14px;
+  }
+  .queue .name { font-weight: 600; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+  .queue .name .status { margin-left: auto; font-weight: 500; font-size: 12px; padding: 3px 8px; border-radius: 999px; }
+  .status.ok   { background: var(--green-tint); color: var(--green-deep); }
+  .status.warn { background: var(--amber-tint); color: var(--amber); }
+  .status.bad  { background: var(--red-tint); color: var(--red); }
+  .queue .count { display: flex; align-items: baseline; gap: 10px; margin-top: 10px; }
+  .queue .count .n { font-family: var(--display); font-weight: 600; font-size: 32px; line-height: 1; letter-spacing: -0.02em; }
+  .queue .count .of { color: var(--ink-2); }
+  .bar { height: 8px; border-radius: 4px; background: var(--rule-soft); margin-top: 12px; position: relative; overflow: hidden; }
+  .bar > i { position: absolute; left: 0; top: 0; bottom: 0; }
+  .bar .floor { background: var(--green); }
+  .bar .transit { background: var(--green); opacity: .35; }
+  .bar .risk { background: var(--amber); opacity: .8; }
+  .queue .legend { display: flex; gap: 14px; margin-top: 8px; color: var(--ink-2); font-size: 12.5px; flex-wrap: wrap; }
+  .queue .legend b { font-weight: 600; color: var(--ink); }
+  .queue .sla {
+    margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--rule-soft);
+    display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; font-size: 13px;
+  }
+  .queue .sla .k { color: var(--ink-2); }
+  .queue .sla .v { font-weight: 500; font-variant-numeric: tabular-nums; }
+  .queue .sla .v.bad { color: var(--red); }
+  .queue .sla .v.ok { color: var(--green-deep); }
+
+  /* ------------------------------------------------------------- table */
+  h2 { font-size: 13px; font-weight: 600; color: var(--ink-2); margin: 0 0 10px; }
+  table { width: 100%; border-collapse: collapse; background: var(--paper); border: 1px solid var(--rule); border-radius: var(--radius); overflow: hidden; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--rule-soft); vertical-align: middle; }
+  th { font-weight: 500; color: var(--ink-2); font-size: 12.5px; background: #fafafa; }
+  tr:last-child td { border-bottom: 0; }
+  td.num { font-variant-numeric: tabular-nums; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; vertical-align: 1px; background: var(--ink-3); }
+  .dot.ok { background: var(--green); }
+  .dot.warn { background: var(--amber); }
+  .dot.bad { background: var(--red); }
+  .dot.hollow { background: transparent; border: 1.5px solid var(--ink-3); }
+  .muted { color: var(--ink-3); }
+  .spread { color: var(--ink-3); font-size: 12px; margin-left: 4px; }
+  .riders-wrap { overflow-x: auto; margin-bottom: 26px; }
+
+  /* -------------------------------------------------------------- feed */
+  .feed { list-style: none; margin: 0; padding: 0; }
+  .feed li { display: grid; grid-template-columns: 48px 1fr; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--rule-soft); }
+  .feed li:last-child { border-bottom: 0; }
+  .feed .t { color: var(--ink-3); font-variant-numeric: tabular-nums; }
+  .feed .alert-line { font-weight: 500; }
+  .feed .alert-line .dot { margin-right: 6px; }
+
+  /* --------------------------------------------------------------- act */
+  .act > section { padding: 20px 22px; border-bottom: 1px solid var(--rule); }
+  .act > section:last-child { border-bottom: 0; }
+  .alert-block + .alert-block { margin-top: 22px; padding-top: 22px; border-top: 1px solid var(--rule); }
+  .act .alert-head { display: flex; align-items: baseline; gap: 10px; }
+  .act .alert-head h3 { margin: 0; font-size: 16px; font-weight: 600; }
+  .act .alert-head .when { color: var(--ink-3); margin-left: auto; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+  .act .short { font-family: var(--display); font-weight: 500; font-size: 20px; line-height: 1.25; margin: 6px 0 12px; letter-spacing: -0.01em; }
+  .act .short em { font-style: normal; color: var(--red); }
+  .narrative { font-size: 14.5px; line-height: 1.55; color: var(--ink); }
+  .narrative.pending { color: var(--ink-3); }
+  .narrative.history { color: var(--ink-2); font-size: 13.5px; }
+  .narrative.pending::after { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--green); margin-left: 6px; animation: pulse 1.2s infinite; vertical-align: 2px; }
+  @keyframes pulse { 0%,100% { opacity: .2 } 50% { opacity: 1 } }
+  @media (prefers-reduced-motion: reduce) { .narrative.pending::after { animation: none; } }
+  .context { margin: 12px 0 0; padding: 0; list-style: none; color: var(--ink-2); font-size: 13px; }
+  .context li { padding-left: 14px; position: relative; margin-top: 4px; }
+  .context li::before { content: ""; position: absolute; left: 0; top: 8px; width: 6px; height: 1px; background: var(--ink-3); }
+
+  .options { display: flex; flex-direction: column; gap: 8px; }
+  .option {
+    text-align: left; width: 100%;
+    border: 1px solid var(--rule); background: var(--paper); border-radius: var(--radius);
+    padding: 11px 14px; display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; align-items: center;
+  }
+  .option:hover { border-color: var(--ink-3); }
+  .option.recommended { background: var(--green); border-color: var(--green); color: #fff; }
+  .option.recommended:hover { background: var(--green-deep); border-color: var(--green-deep); }
+  .option .label { font-weight: 600; grid-column: 1; }
+  .option .outcome { grid-column: 2; grid-row: 1 / span 2; font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; white-space: nowrap; }
+  .option .why { grid-column: 1; font-size: 12.5px; opacity: .8; }
+  .option.recommended .why { opacity: .9; }
+  .option .people { grid-column: 1 / -1; font-size: 12.5px; margin-top: 4px; opacity: .85; }
+  .option .cost { grid-column: 1 / -1; font-size: 12.5px; margin-top: 4px; color: var(--red); }
+  .option.recommended .cost { color: #fff; }
+  .option[disabled] { opacity: .6; cursor: default; }
+  .option[disabled]:hover { border-color: var(--rule); }
+  .option .done { grid-column: 1 / -1; font-size: 12.5px; margin-top: 4px; color: var(--green-deep); font-weight: 500; }
+  .option.recommended .done { color: #fff; }
+
+  .sent { list-style: none; margin: 0; padding: 0; }
+  .sent li { padding: 10px 12px; background: var(--ground); border-radius: var(--radius); margin-top: 8px; font-size: 13px; }
+  .sent li .h { display: flex; gap: 8px; font-weight: 600; margin-bottom: 4px; }
+  .sent li .h .t { color: var(--ink-3); font-weight: 400; margin-left: auto; font-variant-numeric: tabular-nums; }
+  .sent li p { margin: 0; color: var(--ink-2); }
+  .empty { color: var(--ink-3); font-size: 13px; }
+
+  .chat { display: flex; flex-direction: column; gap: 10px; }
+  .thread { display: flex; flex-direction: column; gap: 8px; max-height: 260px; overflow-y: auto; }
+  .msg { padding: 9px 12px; border-radius: var(--radius); font-size: 13.5px; line-height: 1.5; max-width: 92%; }
+  .msg.me { background: var(--ink); color: #fff; align-self: flex-end; }
+  .msg.bot { background: var(--ground); align-self: flex-start; white-space: pre-wrap; }
+  .msg.bot.thinking { color: var(--ink-3); }
+  .ask { display: flex; gap: 8px; }
+  .ask input {
+    flex: 1; font: inherit; padding: 9px 12px; border: 1px solid var(--rule); border-radius: var(--radius);
+    background: var(--paper); color: var(--ink);
+  }
+  .ask input::placeholder { color: var(--ink-3); }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%);
+    background: var(--ink); color: #fff; padding: 10px 14px; border-radius: var(--radius);
+    font-size: 13px; opacity: 0; pointer-events: none; transition: opacity .2s;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wordmark"><span class="mark"></span>MoveInSync <span class="product">ION</span></div>
+  <div class="site" id="site"><strong>Clearwater Campus</strong> &nbsp; 09:00 shift</div>
+</header>
+
+<main class="page">
+  <div class="floor">
+
+    <div class="hero">
+      <div class="clock" id="clock">07:30</div>
+      <div class="headline">
+        <div class="big" id="headline">Loading the floor</div>
+        <div class="sub" id="subline"></div>
+      </div>
+      <div class="controls">
+        <button class="btn" id="play">Run the morning</button>
+        <button class="btn quiet" id="jump">Jump to 08:55</button>
+        <button class="btn quiet" id="reset">Start over</button>
+        <div class="speed" id="speed">
+          <button data-s="30">30×</button>
+          <button data-s="60" class="on">60×</button>
+          <button data-s="180">180×</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="story" id="story">
+      <div class="row">
+        <span class="title">Tell the morning as a story</span>
+        <span class="state" id="story-state">Not prepared yet. This captures every minute from 07:30 to 10:00 and writes up each alert as it opens. About two minutes the first time.</span>
+        <div class="right">
+          <button class="btn quiet" id="story-live" hidden>Back to live</button>
+          <button class="btn" id="story-prepare">Prepare the story</button>
+        </div>
+      </div>
+      <div id="story-controls" hidden>
+        <div class="track">
+          <input type="range" id="scrub" min="0" max="150" value="0" step="1" aria-label="Time of morning">
+          <div class="marks" id="marks"></div>
+          <div class="ticks"><span>07:30</span><span>08:00</span><span>08:30</span><span>09:00</span><span>09:30</span><span>10:00</span></div>
+        </div>
+        <div class="landmark">
+          <span class="now" id="story-now">07:30</span>
+          <span class="what" id="story-what"></span>
+          <div class="nav">
+            <button class="btn" id="lm-prev" title="Previous landmark (←)">Previous</button>
+            <button class="btn" id="lm-next" title="Next landmark (→)">Next</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="queues" id="queues"></div>
+
+    <h2>Everyone rostered for 09:00</h2>
+    <div class="riders-wrap">
+      <table>
+        <thead>
+          <tr><th>Agent</th><th>Queue</th><th>Where they are</th><th>Arrives</th><th>Cab</th></tr>
+        </thead>
+        <tbody id="riders"></tbody>
+      </table>
+    </div>
+
+    <h2>What has happened</h2>
+    <ul class="feed" id="feed"></ul>
+  </div>
+
+  <aside class="act">
+    <section id="alert-panel">
+      <div class="empty">No alert yet. The floor is on track.</div>
+    </section>
+    <section>
+      <h2>Sent</h2>
+      <ul class="sent" id="sent"><li class="empty" style="background:none;padding:0">Nothing sent yet.</li></ul>
+    </section>
+    <section class="chat">
+      <h2>Ask about the shift</h2>
+      <div class="thread" id="thread"></div>
+      <form class="ask" id="ask">
+        <input id="q" placeholder="Who should I call first?" autocomplete="off">
+        <button class="btn primary" type="submit">Ask</button>
+      </form>
+    </section>
+  </aside>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  const API = "";
+  const $ = (id) => document.getElementById(id);
+  let speed = 60;
+  let running = false;
+  let lastEvent = null;
+  let activeAlertId = null;
+  const events = [];
+  const sentLog = [];
+
+  // ------------------------------------------------------------ helpers
+  const hhmm = (iso) => iso ? iso.slice(11, 16) : "";
+  const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  const toast = (msg) => { const t = $("toast"); t.textContent = msg; t.classList.add("show"); setTimeout(() => t.classList.remove("show"), 2400); };
+  const post = (path) => fetch(API + path, { method: "POST" }).then((r) => r.json());
+  const get = (path) => fetch(API + path).then((r) => r.json());
+
+  const STATE_WORD = {
+    SCHEDULED: ["hollow", "Not due yet"],
+    CAB_MOVING: ["hollow", "Cab on its way"],
+    CAB_LATE: ["warn", "Cab has not left"],
+    PICKED_UP: ["ok", "Aboard"],
+    DROPPED: ["ok", "On the floor"],
+    NO_PICKUP: ["bad", "Not collected"],
+    NO_SHOW: ["bad", "Not travelling"],
+    CANCELLED: ["", "Cancelled in advance"],
+    NOT_SCHEDULED: ["", "Not rostered today"],
+  };
+  const RISK_CLASS = { ARRIVED: "ok", ON_TRACK: "ok", AT_RISK: "warn", LATE: "bad", OVERDUE: "bad", UNKNOWN: "warn" };
+
+  const PATHWAY = {
+    HOLD_OVER: "Keep the night shift on",
+    EARLY_SHIFT_COVER: "Move the early shift onto the queue",
+    CROSS_COVER: "Borrow from the other queue",
+    CONTACT_EMPLOYEE: "Call the unaccounted riders",
+    ESCALATE_TRANSPORT: "Escalate to transport",
+    ESCALATE_OPS: "Flag the day's service level to operations",
+    WAIT: "Hold and watch",
+  };
+
+  // ------------------------------------------------------------- board
+  function renderBoard(b) {
+    running = b.running;
+    $("clock").textContent = b.time;
+    $("site").innerHTML = `<strong>${esc(b.office)}</strong> &nbsp; ${esc(b.shift_type)} shift, ${esc(b.shift_date)}`;
+    $("play").textContent = running ? "Pause" : (b.time === "07:30" ? "Run the morning" : "Resume");
+
+    const t = b.totals;
+    const cls = t.coverage_pct >= 90 ? "" : t.coverage_pct >= 75 ? "warn" : "bad";
+    $("headline").innerHTML = `<em class="${cls}">${t.on_floor} of ${t.rostered}</em> on the floor`;
+    const deadline = hhmm(b.deadline);
+    $("subline").textContent = t.projected === t.rostered && t.on_floor === t.rostered
+      ? `Everyone is in.`
+      : `${t.projected} expected by ${deadline}, ${t.coverage_pct}% of the roster` +
+        (t.queues_breaching_sla ? `, ${t.queues_breaching_sla} queue${t.queues_breaching_sla > 1 ? "s" : ""} below service level` : "");
+
+    $("queues").innerHTML = b.queues.map(renderQueue).join("");
+    renderRiders(b.queues);
+  }
+
+  function renderQueue(q) {
+    const i = q.impact, sl = i.service_level || {}, full = i.service_level_full || {}, day = i.day || {};
+    const pct = (n) => q.rostered ? Math.round(100 * n / q.rostered) : 0;
+    const badge = sl.meets_target ? ["ok", "On target"] : q.coverage_pct >= 75 ? ["warn", "Watch"] : ["bad", "Short"];
+    const slClass = sl.meets_target ? "ok" : "bad";
+    return `
+      <div class="queue">
+        <div class="name">${esc(q.display_name)} <span class="status ${badge[0]}">${badge[1]}</span></div>
+        <div class="count"><span class="n">${q.on_floor}</span><span class="of">of ${q.rostered} on the floor</span></div>
+        <div class="bar">
+          <i class="floor" style="width:${pct(q.on_floor)}%"></i>
+          <i class="transit" style="left:${pct(q.on_floor)}%;width:${pct(q.in_transit)}%"></i>
+          <i class="risk" style="left:${pct(q.on_floor + q.in_transit)}%;width:${pct(q.at_risk)}%"></i>
+        </div>
+        <div class="legend">
+          <span><b>${q.in_transit}</b> on the way</span>
+          <span><b>${q.at_risk}</b> at risk</span>
+          ${q.absent ? `<span><b>${q.absent}</b> absent</span>` : ""}
+          <span><b>${q.projected}</b> expected by ${hhmm(q.deadline)}</span>
+        </div>
+        <div class="sla">
+          <span class="k">Service level now</span><span class="v ${slClass}">${sl.service_level_pct ?? "–"}%</span>
+          <span class="k">At full strength</span><span class="v">${full.service_level_pct ?? "–"}%</span>
+          <span class="k">Day so far</span><span class="v ${day.meets_target ? "ok" : "bad"}">${day.day_service_level_pct ?? "–"}% ${day.meets_target ? "holds" : "misses"} ${sl.target_pct ?? 80}%</span>
+          <span class="k">Needs on the queue</span><span class="v">${i.agents_needed ?? "–"}</span>
+        </div>
+      </div>`;
+  }
+
+  function renderRiders(queues) {
+    const rows = [];
+    for (const q of queues) for (const r of q.riders) rows.push({ ...r, queueName: q.display_name });
+    rows.sort((a, b) => {
+      const ka = a.state === "DROPPED" ? 0 : a.eta ? 1 : 2;
+      const kb = b.state === "DROPPED" ? 0 : b.eta ? 1 : 2;
+      if (ka !== kb) return ka - kb;
+      return (a.eta || "z").localeCompare(b.eta || "z");
+    });
+    $("riders").innerHTML = rows.map((r) => {
+      const [dotBase, word] = STATE_WORD[r.state] || ["", r.state];
+      const dot = r.state === "DROPPED" ? "ok" : (RISK_CLASS[r.risk] && r.state !== "SCHEDULED" ? RISK_CLASS[r.risk] : dotBase);
+      const late = r.minutes_late != null && r.minutes_late > 0 && r.state !== "DROPPED";
+      const eta = r.state === "DROPPED"
+        ? `${hhmm(r.eta)}`
+        : r.eta ? `${hhmm(r.eta)}<span class="spread">±${Math.round(r.eta_spread_min)}</span>` : `<span class="muted">unknown</span>`;
+      return `<tr>
+        <td>${esc(r.name)}</td>
+        <td class="muted">${esc(r.queueName)}</td>
+        <td><span class="dot ${dot}"></span>${word}${late ? ` <span class="muted">(${Math.round(r.minutes_late)} min late)</span>` : ""}</td>
+        <td class="num">${eta}</td>
+        <td class="muted">${esc((r.vendor || "").replace(" Travel", ""))}</td>
+      </tr>`;
+    }).join("");
+  }
+
+  // ------------------------------------------------------------ alerts
+  function renderAlerts(data) {
+    const alerts = (data.alerts || []).slice();
+    const open = alerts.filter((a) => a.status !== "RESOLVED").sort((a, b) => a.coverage_pct - b.coverage_pct);
+    const resolved = alerts.filter((a) => a.status === "RESOLVED").sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+    // Every open alert, then the most recently resolved one so the morning's
+    // story is still visible after the queues recover.
+    const show = open.length ? open : resolved.slice(0, 1);
+    const panel = $("alert-panel");
+    if (!show.length) {
+      panel.innerHTML = `<div class="empty">No alert yet. The floor is on track.</div>`;
+      return;
+    }
+    panel.innerHTML = show.map(renderAlert).join("");
+    panel.querySelectorAll(".option").forEach((btn) => {
+      const alert = show.find((a) => String(a.id) === btn.dataset.alert);
+      btn.addEventListener("click", () => act(alert, btn.dataset.pathway));
+    });
+    if (open.length && resolved.length) {
+      // Quiet line for what already settled.
+      panel.insertAdjacentHTML("beforeend", resolved.map((a) =>
+        `<div class="alert-block"><div class="alert-head"><h3 class="muted" style="font-weight:500">${esc(a.queue_name)}</h3><span class="when">resolved ${hhmm(a.resolved_at)}</span></div></div>`
+      ).join(""));
+    }
+    renderSent(alerts);
+  }
+
+  function renderAlert(show) {
+    const i = show.impact || {}, sl = i.service_level || {};
+    const resolved = show.status === "RESOLVED";
+    const taken = new Set((show.actions || []).map((a) => a.pathway));
+
+    const shortLine = resolved
+      ? `Back to ${show.coverage_pct}% strength`
+      : `<em>${i.agents_missing} short</em> until ${hhmm(i.recovered_by) || "later"}, service level ${sl.service_level_pct ?? "–"}%`;
+
+    // Once an alert resolves, the write-up describes a moment that has passed.
+    // Show it as the morning's record rather than as a present-tense claim
+    // that contradicts the "back to strength" line above it.
+    const narrative = resolved
+      ? `<p class="narrative">${esc(show.queue_name)} is back to strength. Nothing outstanding.</p>`
+        + (show.narrative ? `<h2 style="margin-top:14px">What happened</h2><p class="narrative history">${esc(show.narrative)}</p>` : "")
+      : show.narrative
+        ? `<p class="narrative">${esc(show.narrative)}</p>`
+        : `<p class="narrative pending">${esc(fallbackSummary(show))}</p>`;
+
+    const context = (show.context || []).slice(0, 3).map((c) => `<li>${esc(c.text)}</li>`).join("");
+
+    const options = (show.options || []).filter((o) => o.pathway !== "WAIT" || resolved).map((o) => {
+      const done = taken.has(o.pathway);
+      const people = (o.people || []).map((p) => p.name || p.vendor || p.role).filter(Boolean).slice(0, 4).join(", ");
+      const outcome = o.service_level ? `${o.service_level.service_level_pct}%` : "";
+      // The rationale already spells out the hold-over; only the price is new here.
+      const cost = o.cost && o.cost.agents_held ? `Overtime about ${o.cost.cost}` : "";
+      const sentAt = done ? (show.actions.find((a) => a.pathway === o.pathway) || {}).time : "";
+      return `<button class="option ${o.recommended ? "recommended" : ""}" data-alert="${show.id}" data-pathway="${o.pathway}" ${done || resolved ? "disabled" : ""}>
+        <span class="label">${esc(PATHWAY[o.pathway] || o.label)}</span>
+        ${outcome ? `<span class="outcome">${outcome}</span>` : ""}
+        <span class="why">${esc(o.rationale)}</span>
+        ${people ? `<span class="people">${esc(people)}</span>` : ""}
+        ${cost && !o.recommended ? `<span class="cost">${esc(cost)}</span>` : ""}
+        ${done ? `<span class="done">Sent at ${sentAt}</span>` : ""}
+      </button>`;
+    }).join("");
+
+    return `<div class="alert-block">
+      <div class="alert-head">
+        <h3>${esc(show.queue_name)}</h3>
+        <span class="when">${resolved ? `resolved ${hhmm(show.resolved_at)}` : `since ${hhmm(show.opened_at)}`}</span>
+      </div>
+      <div class="short">${shortLine}</div>
+      ${narrative}
+      ${context ? `<ul class="context">${context}</ul>` : ""}
+      ${options ? `<h2 style="margin-top:18px">What you can do</h2><div class="options">${options}</div>` : ""}
+    </div>`;
+  }
+
+  function fallbackSummary(a) {
+    const i = a.impact || {}, sl = i.service_level || {}, day = i.day || {};
+    const rec = (a.options || []).find((o) => o.recommended);
+    const people = rec ? (rec.people || []).map((p) => p.name).filter(Boolean).slice(0, 4).join(", ") : "";
+    return `${a.queue_name} is ${i.agents_missing} short and ${a.coverage_pct}% covered for ${a.shift_type}. ` +
+      `Service level ${sl.service_level_pct}% now against ${sl.target_pct}%; the day ${day.meets_target ? "still holds" : "is at risk"}. ` +
+      (rec ? `Recommended: ${PATHWAY[rec.pathway].toLowerCase()}${people ? ` with ${people}` : ""}. ` : "") +
+      (a.hold_over && a.hold_over.agents_held ? `If nobody acts, ${a.hold_over.summary}.` : "");
+  }
+
+  function renderSent(alerts) {
+    const all = [];
+    for (const a of alerts) for (const s of a.actions || []) all.push({ ...s, queue: a.queue_name });
+    all.sort((x, y) => y.sent_at.localeCompare(x.sent_at));
+    $("sent").innerHTML = all.length
+      ? all.map((s) => `<li>
+          <div class="h">${esc(PATHWAY[s.pathway] || s.pathway)} <span class="muted">${esc(s.queue)}</span><span class="t">${s.time}</span></div>
+          <p>${esc(s.draft || "(no message)")}</p>
+        </li>`).join("")
+      : `<li class="empty" style="background:none;padding:0">Nothing sent yet.</li>`;
+  }
+
+  async function act(alert, pathway) {
+    const when = story ? `&at=${storyTime}` : "";
+    const r = await post(`/alerts/${alert.id}/act?pathway=${encodeURIComponent(pathway)}${when}`);
+    if (r.status === "recorded") {
+      toast(`${PATHWAY[pathway]} sent`);
+      if (story) await showStoryAt(storyTime); else await refresh();
+    } else {
+      toast(r.detail || "Could not record that");
+    }
+  }
+
+  // -------------------------------------------------------------- feed
+  function renderFeed(data) {
+    for (const e of data.events || []) {
+      events.unshift(e);
+      lastEvent = e.at;
+    }
+    const worth = events.filter((e) => e.kind !== "cab_started" && e.kind !== "picked_up");
+    const arrivals = events.filter((e) => e.kind === "arrived").length;
+    $("feed").innerHTML = worth.slice(0, 14).map((e) => {
+      const isAlert = e.kind.startsWith("alert");
+      const dot = e.kind === "alert_opened" ? "bad" : e.kind === "alert_resolved" ? "ok" : e.kind === "arrived" ? "ok" : e.kind === "cab_late" ? "warn" : "bad";
+      return `<li><span class="t">${e.time}</span><span class="${isAlert ? "alert-line" : ""}"><span class="dot ${dot}"></span>${esc(e.subject)}: ${esc(e.detail)}</span></li>`;
+    }).join("") || `<li><span class="t"></span><span class="empty">Nothing yet.</span></li>`;
+  }
+
+  // -------------------------------------------------------------- chat
+  $("ask").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const q = $("q").value.trim();
+    if (!q) return;
+    $("q").value = "";
+    const thread = $("thread");
+    thread.insertAdjacentHTML("beforeend", `<div class="msg me">${esc(q)}</div>`);
+    const think = document.createElement("div");
+    think.className = "msg bot thinking"; think.textContent = "Checking the board";
+    thread.appendChild(think); thread.scrollTop = thread.scrollHeight;
+    try {
+      const r = await fetch(API + "/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: q }) }).then((x) => x.json());
+      think.className = "msg bot"; think.textContent = r.reply || r.detail || "No answer came back.";
+    } catch (e) {
+      think.className = "msg bot"; think.textContent = "Could not reach the assistant. The board is still live.";
+    }
+    thread.scrollTop = thread.scrollHeight;
+    refresh();
+  });
+
+  // ------------------------------------------------------------- story
+  const START_MIN = 7 * 60 + 30;
+  let story = false;
+  let landmarks = [];
+  let storyTime = "07:30";
+  const minToHHMM = (m) => `${String(Math.floor((START_MIN + m) / 60)).padStart(2, "0")}:${String((START_MIN + m) % 60).padStart(2, "0")}`;
+  const hhmmToMin = (t) => (Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5))) - START_MIN;
+
+  function setStoryMode(on) {
+    story = on;
+    document.getElementById("story-controls").hidden = !on;
+    document.getElementById("story-live").hidden = !on;
+    document.getElementById("story-prepare").hidden = on;
+    if (on) {
+      document.querySelector(".story .title").innerHTML = `Story <span class="badge">scrubbing</span>`;
+    } else {
+      document.querySelector(".story .title").textContent = "Tell the morning as a story";
+      refresh();
+    }
+  }
+
+  function renderMarks() {
+    $("marks").innerHTML = landmarks.map((m) => {
+      const pct = (hhmmToMin(m.time) / 150) * 100;
+      return `<i class="${m.kind}" style="left:${pct}%" title="${esc(m.time)} ${esc(m.label)}"></i>`;
+    }).join("");
+  }
+
+  async function showStoryAt(hhmm) {
+    storyTime = hhmm;
+    $("scrub").value = hhmmToMin(hhmm);
+    $("story-now").textContent = hhmm;
+    const here = landmarks.filter((m) => m.time <= hhmm).slice(-1)[0];
+    $("story-what").innerHTML = here
+      ? `<span class="dot ${here.kind === "mark" ? "" : here.kind}"></span>${esc(here.label)}${here.time !== hhmm ? ` <span class="muted">at ${here.time}</span>` : ""}`
+      : `<span class="muted">Before anything happened</span>`;
+    try {
+      const snap = await get(`/timeline?at=${hhmm}`);
+      renderBoard({ ...snap.board, running: false });
+      renderAlerts({ alerts: snap.alerts });
+      events.length = 0; lastEvent = null;
+      renderFeed({ events: snap.events });
+      $("play").textContent = "Run the morning";
+    } catch (e) {
+      $("story-what").textContent = "Could not load that minute";
+    }
+  }
+
+  function stepLandmark(dir) {
+    if (!landmarks.length) return;
+    const next = dir > 0
+      ? landmarks.find((m) => m.time > storyTime)
+      : landmarks.slice().reverse().find((m) => m.time < storyTime);
+    if (next) showStoryAt(next.time);
+  }
+
+  async function prepareStory() {
+    const btn = $("story-prepare"), state = $("story-state");
+    btn.disabled = true;
+    state.textContent = "Starting";
+    await post(`/timeline/build?narrate=true`);
+    const poll = setInterval(async () => {
+      const st = await get(`/timeline/status`);
+      if (st.error) { clearInterval(poll); state.textContent = `Failed: ${st.error}`; btn.disabled = false; return; }
+      if (st.building) {
+        state.textContent = `Capturing ${minToHHMM(Math.min(150, st.ticks_done))} of 10:00, ${st.narrated} alert${st.narrated === 1 ? "" : "s"} written up`;
+        return;
+      }
+      if (st.ready) {
+        clearInterval(poll);
+        landmarks = st.landmarks;
+        renderMarks();
+        state.textContent = `${landmarks.length} landmarks. Drag the slider or use the arrow keys.`;
+        btn.disabled = false;
+        setStoryMode(true);
+        showStoryAt("07:30");
+      }
+    }, 1000);
+  }
+
+  $("story-prepare").addEventListener("click", prepareStory);
+  $("story-live").addEventListener("click", () => setStoryMode(false));
+  $("scrub").addEventListener("input", (ev) => showStoryAt(minToHHMM(Number(ev.target.value))));
+  $("lm-prev").addEventListener("click", () => stepLandmark(-1));
+  $("lm-next").addEventListener("click", () => stepLandmark(1));
+  document.addEventListener("keydown", (ev) => {
+    if (!story || ev.target.tagName === "INPUT") return;
+    if (ev.key === "ArrowRight") { ev.preventDefault(); stepLandmark(1); }
+    if (ev.key === "ArrowLeft") { ev.preventDefault(); stepLandmark(-1); }
+  });
+
+  // If a timeline already exists on the server, offer it straight away.
+  get(`/timeline/status`).then((st) => {
+    if (st.ready) {
+      landmarks = st.landmarks; renderMarks();
+      $("story-state").textContent = `${landmarks.length} landmarks ready. Prepared earlier; press to scrub.`;
+      $("story-prepare").textContent = "Open the story";
+      $("story-prepare").onclick = () => { setStoryMode(true); showStoryAt("07:30"); };
+    }
+  }).catch(() => {});
+
+  // ---------------------------------------------------------- controls
+  $("play").addEventListener("click", async () => {
+    if (running) {
+      await post(`/replay/pause`);
+    } else {
+      await post(`/replay/start?speed=${speed}`);
+    }
+    refresh();
+  });
+  $("jump").addEventListener("click", async () => { await post(`/replay/start?to=08:55`); refresh(); });
+  $("reset").addEventListener("click", async () => {
+    await post(`/replay/reset?clear_cover=true`);
+    events.length = 0; lastEvent = null;
+    refresh();
+  });
+  $("speed").addEventListener("click", (ev) => {
+    const b = ev.target.closest("button"); if (!b) return;
+    speed = Number(b.dataset.s);
+    $("speed").querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b));
+  });
+
+  // ------------------------------------------------------------ polling
+  async function refresh() {
+    try {
+      const [board, alerts, feed] = await Promise.all([
+        get("/board"),
+        get("/alerts"),
+        get(`/events${lastEvent ? `?since=${encodeURIComponent(lastEvent)}` : ""}`),
+      ]);
+      renderBoard(board);
+      renderAlerts(alerts);
+      renderFeed(feed);
+    } catch (e) {
+      $("headline").textContent = "Cannot reach the API";
+      $("subline").textContent = "Start it with: uv run uvicorn app.api:app --port 8000";
+    }
+  }
+  refresh();
+  setInterval(() => { if (running && !story) refresh(); }, 1000);
+  setInterval(() => { if (!running && !story) refresh(); }, 6000);
+})();
+</script>
+</body>
+</html>

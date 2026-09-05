@@ -1,0 +1,21 @@
+# dataset — supplied by the organisers, not ours to redistribute
+MoveInSync - Anonymised Trip-Log Dataset/
+
+# secrets
+.env
+agent/.env
+
+# python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+# scratch and generated output
+scratch/
+*.parquet
+
+# node
+node_modules/
+web/dist/

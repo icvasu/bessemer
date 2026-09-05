@@ -1,0 +1,460 @@
+{
+  "clock": "2026-06-11T08:55:00",
+  "events": [
+    {
+      "at": "2026-06-11T07:31:00",
+      "time": "07:31",
+      "kind": "picked_up",
+      "subject": "Agent 02",
+      "detail": "picked up"
+    },
+    {
+      "at": "2026-06-11T07:39:00",
+      "time": "07:39",
+      "kind": "cab_started",
+      "subject": "Agent 22",
+      "detail": "cab on the road"
+    },
+    {
+      "at": "2026-06-11T07:40:00",
+      "time": "07:40",
+      "kind": "cab_late",
+      "subject": "Agent 20",
+      "detail": "cab has not left its depot"
+    },
+    {
+      "at": "2026-06-11T07:45:00",
+      "time": "07:45",
+      "kind": "cab_late",
+      "subject": "Agent 08",
+      "detail": "cab has not left its depot"
+    },
+    {
+      "at": "2026-06-11T07:49:00",
+      "time": "07:49",
+      "kind": "picked_up",
+      "subject": "Agent 08",
+      "detail": "picked up"
+    },
+    {
+      "at": "2026-06-11T07:51:00",
+      "time": "07:51",
+      "kind": "cab_late",
+      "subject": "Agent 03",
+      "detail": "cab has not left its depot"
+    },
+    {
+      "at": "2026-06-11T07:56:00",
+      "time": "07:56",
+      "kind": "cab_started",
+      "subject": "Agent 12",
+      "detail": "cab on the road"
+    },
+    {
+      "at": "2026-06-11T07:56:00",
+      "time": "07:56",
+      "kind": "cab_late",
+      "subject": "Agent 19",
+      "detail": "cab has not left its depot"
+    },
+    {
+      "at": "2026-06-11T07:56:00",
+      "time": "07:56",
+      "kind": "picked_up",
+      "subject": "Agent 22",
+      "detail": "picked up"
+    },
+    {
+      "at": "2026-06-11T08:01:00",
+      "time": "08:01",
+      "kind": "alert_opened",
+      "subject": "Technical Support",
+      "detail": "92% coverage projected, 2 to 5 calls at risk"
+    },
+    {
+      "at": "2026-06-11T08:04:00",
+      "time": "08:04",
+      "kind": "picked_up",
+      "subject": "Agent 03",
+      "detail": "picked up"
+    },
+    {
+      "at": "2026-06-11T08:04:00",
+      "time": "08:04",
+      "kind": "cab_started",
+      "subject": "Agent 19",
+      "detail": "cab on the road"
+    },
+    {
+      "at": "2026-06-11T08:05:00",
+      "time": "08:05",
+      "kind": "cab_late",
+      "subject": "Agent 24",
+      "detail": "cab has not left its depot"
+    },
+    {
+      "at": "2026-06-11T08:07:00",
+      "time": "08:07",
+      "kind": "cab_late",
+      "subject": "Agent 16",
+      "detail": "cab has not left its depot"
+    },
+    {
+      "at": "2026-06-11T08:08:00",
+      "time": "08:08",
+      "kind": "picked_up",
+      "subject": "Agent 12",
+      "detail": "picked up"
+    },
+    {
+      "at": "2026-06-11T08:08:00",
+      "time": "08:08",
+      "kind": "picked_up",
+      "subject": "Agent 19",
+      "detail": "picked up"
+    },
+    {
+      "at": "2026-06-11T08:08:00",
+      "time": "08:08",
+      "kind": "cab_started",
+      "subject": "Agent 20",
+      "detail": "cab on the road"
+    },
+    {
+      "at": "2026-06-11T08:09:00",
+      "time": "08:09",
+      "kind": "picked_up",
+      "subject": "Agent 24",
+      "detail": "picked up"
+    },
+    {
+      "at": "2026-06-11T08:10:00",
+      "time": "08:10",
+      "kind": "cab_started",
+      "subject": "Agent 09",
+      "detail": "cab on the road"
+    },
+    {
+      "at": "2026-06-11T08:10:00",
+      "time": "08:10",
+      "kind": "cab_started",
+      "subject": "Agent 16",
+      "detail": "cab on the road"
+    },
+    {
+      "at": "2026-06-11T08:12:00",
+      "time": "08:12",
+      "kind": "cab_late",
+      "subject": "Agent 01",
+      "detail": "cab has not left its depot"
+    },
+    {
+      "at": "2026-06-11T08:12:00",
+      "time": "08:12",
+      "kind": "cab_late",
+      "subject": "Agent 07",
+      "detail": "cab has not left its depot"
+    },
+    {
+      "at": "2026-06-11T08:14:00",
+      "time": "08:14",
+      "kind": "cab_started",
+      "subject": "Agent 01",
+      "detail": "cab on the road"
+    },
+    {
+      "at": "2026-06-11T08:15:00",
+      "time": "08:15",
+      "kind": "cab_late",
+      "subject": "Agent 05",
+      "detail": "cab has not left its depot"
+    },
+    {
+      "at": "2026-06-11T08:17:00",
+      "time": "08:17",
+      "kind": "picked_up",
+      "subject": "Agent 05",
+      "detail": "picked up"
+    },
+    {
+      "at": "2026-06-11T08:17:00",
+      "time": "08:17",
+      "kind": "cab_started",
+      "subject": "Agent 07",
+      "detail": "cab on the road"
+    },
+    {
+      "at": "2026-06-11T08:19:00",
+      "time": "08:19",
+      "kind": "cab_late",
+      "subject": "Agent 15",
+      "detail": "cab has not left its depot"
+    },
+    {
+      "at": "2026-06-11T08:19:00",
+      "time": "08:19",
+      "kind": "picked_up",
+      "subject": "Agent 20",
+      "detail": "picked up"
+    },
+    {
+      "at": "2026-06-11T08:20:00",
+      "time": "08:20",
+      "kind": "cab_late",
+      "subject": "Agent 04",
+      "detail": "cab has not left its depot"
+    },
+    {
+      "at": "2026-06-11T08:20:00",
+      "time": "08:20",
+      "kind": "cab_late",
+      "subject": "Agent 06",
+      "detail": "cab has not left its depot"
+    },
+    {
+      "at": "2026-06-11T08:20:00",
+      "time": "08:20",
+      "kind": "cab_late",
+      "subject": "Agent 11",
+      "detail": "cab has not left its depot"
+    },
+    {
+      "at": "2026-06-11T08:20:00",
+      "time": "08:20",
+      "kind": "picked_up",
+      "subject": "Agent 16",
+      "detail": "picked up"
+    },
+    {
+      "at": "2026-06-11T08:20:00",
+      "time": "08:20",
+      "kind": "cab_late",
+      "subject": "Agent 23",
+      "detail": "cab has not left its depot"
+    },
+    {
+      "at": "2026-06-11T08:21:00",
+      "time": "08:21",
+      "kind": "cab_late",
+      "subject": "Agent 14",
+      "detail": "cab has not left its depot"
+    },
+    {
+      "at": "2026-06-11T08:22:00",
+      "time": "08:22",
+      "kind": "picked_up",
+      "subject": "Agent 01",
+      "detail": "picked up"
+    },
+    {
+      "at": "2026-06-11T08:22:00",
+      "time": "08:22",
+      "kind": "picked_up",
+      "subject": "Agent 07",
+      "detail": "picked up"
+    },
+    {
+      "at": "2026-06-11T08:22:00",
+      "time": "08:22",
+      "kind": "cab_late",
+      "subject": "Agent 21",
+      "detail": "cab has not left its depot"
+    },
+    {
+      "at": "2026-06-11T08:23:00",
+      "time": "08:23",
+      "kind": "cab_started",
+      "subject": "Agent 04",
+      "detail": "cab on the road"
+    },
+    {
+      "at": "2026-06-11T08:23:00",
+      "time": "08:23",
+      "kind": "cab_started",
+      "subject": "Agent 11",
+      "detail": "cab on the road"
+    },
+    {
+      "at": "2026-06-11T08:23:00",
+      "time": "08:23",
+      "kind": "cab_late",
+      "subject": "Agent 13",
+      "detail": "cab has not left its depot"
+    },
+    {
+      "at": "2026-06-11T08:24:00",
+      "time": "08:24",
+      "kind": "cab_started",
+      "subject": "Agent 13",
+      "detail": "cab on the road"
+    },
+    {
+      "at": "2026-06-11T08:25:00",
+      "time": "08:25",
+      "kind": "cab_started",
+      "subject": "Agent 06",
+      "detail": "cab on the road"
+    },
+    {
+      "at": "2026-06-11T08:25:00",
+      "time": "08:25",
+      "kind": "no_pickup",
+      "subject": "Agent 09",
+      "detail": "not collected, cab has passed"
+    },
+    {
+      "at": "2026-06-11T08:25:00",
+      "time": "08:25",
+      "kind": "alert_opened",
+      "subject": "Billing Support",
+      "detail": "92% coverage projected, 1 to 5 calls at risk"
+    },
+    {
+      "at": "2026-06-11T08:26:00",
+      "time": "08:26",
+      "kind": "picked_up",
+      "subject": "Agent 04",
+      "detail": "picked up"
+    },
+    {
+      "at": "2026-06-11T08:26:00",
+      "time": "08:26",
+      "kind": "cab_late",
+      "subject": "Agent 17",
+      "detail": "cab has not left its depot"
+    },
+    {
+      "at": "2026-06-11T08:27:00",
+      "time": "08:27",
+      "kind": "cab_started",
+      "subject": "Agent 15",
+      "detail": "cab on the road"
+    },
+    {
+      "at": "2026-06-11T08:27:00",
+      "time": "08:27",
+      "kind": "cab_started",
+      "subject": "Agent 21",
+      "detail": "cab on the road"
+    },
+    {
+      "at": "2026-06-11T08:29:00",
+      "time": "08:29",
+      "kind": "picked_up",
+      "subject": "Agent 09",
+      "detail": "picked up"
+    },
+    {
+      "at": "2026-06-11T08:30:00",
+      "time": "08:30",
+      "kind": "cab_late",
+      "subject": "Agent 10",
+      "detail": "cab has not left its depot"
+    },
+    {
+      "at": "2026-06-11T08:30:00",
+      "time": "08:30",
+      "kind": "picked_up",
+      "subject": "Agent 11",
+      "detail": "picked up"
+    },
+    {
+      "at": "2026-06-11T08:32:00",
+      "time": "08:32",
+      "kind": "picked_up",
+      "subject": "Agent 23",
+      "detail": "picked up"
+    },
+    {
+      "at": "2026-06-11T08:33:00",
+      "time": "08:33",
+      "kind": "cab_late",
+      "subject": "Agent 18",
+      "detail": "cab has not left its depot"
+    },
+    {
+      "at": "2026-06-11T08:34:00",
+      "time": "08:34",
+      "kind": "picked_up",
+      "subject": "Agent 13",
+      "detail": "picked up"
+    },
+    {
+      "at": "2026-06-11T08:35:00",
+      "time": "08:35",
+      "kind": "picked_up",
+      "subject": "Agent 17",
+      "detail": "picked up"
+    },
+    {
+      "at": "2026-06-11T08:38:00",
+      "time": "08:38",
+      "kind": "picked_up",
+      "subject": "Agent 06",
+      "detail": "picked up"
+    },
+    {
+      "at": "2026-06-11T08:38:00",
+      "time": "08:38",
+      "kind": "cab_started",
+      "subject": "Agent 10",
+      "detail": "cab on the road"
+    },
+    {
+      "at": "2026-06-11T08:38:00",
+      "time": "08:38",
+      "kind": "picked_up",
+      "subject": "Agent 18",
+      "detail": "picked up"
+    },
+    {
+      "at": "2026-06-11T08:39:00",
+      "time": "08:39",
+      "kind": "picked_up",
+      "subject": "Agent 21",
+      "detail": "picked up"
+    },
+    {
+      "at": "2026-06-11T08:41:00",
+      "time": "08:41",
+      "kind": "picked_up",
+      "subject": "Agent 14",
+      "detail": "picked up"
+    },
+    {
+      "at": "2026-06-11T08:42:00",
+      "time": "08:42",
+      "kind": "picked_up",
+      "subject": "Agent 10",
+      "detail": "picked up"
+    },
+    {
+      "at": "2026-06-11T08:47:00",
+      "time": "08:47",
+      "kind": "no_pickup",
+      "subject": "Agent 15",
+      "detail": "not collected, cab has passed"
+    },
+    {
+      "at": "2026-06-11T08:49:00",
+      "time": "08:49",
+      "kind": "arrived",
+      "subject": "Agent 22",
+      "detail": "on the floor"
+    },
+    {
+      "at": "2026-06-11T08:54:00",
+      "time": "08:54",
+      "kind": "arrived",
+      "subject": "Agent 01",
+      "detail": "on the floor"
+    },
+    {
+      "at": "2026-06-11T08:54:00",
+      "time": "08:54",
+      "kind": "arrived",
+      "subject": "Agent 18",
+      "detail": "on the floor"
+    }
+  ]
+}

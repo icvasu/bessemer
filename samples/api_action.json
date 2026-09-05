@@ -1,0 +1,48 @@
+{
+  "status": "recorded",
+  "pathway": "EARLY_SHIFT_COVER",
+  "draft": "Billing Support is 67% staffed for the 09:00 start. Could Agent 27, Agent 29, Agent 35, Agent 31 move onto the queue until the 09:00 team is in? Asking at 08:55.",
+  "people": [
+    {
+      "stwid": 154560,
+      "name": "Agent 27",
+      "queue": "billing",
+      "same_queue": true,
+      "arrived_at": "2026-06-11T08:16:46",
+      "cover_minutes_this_week": 0,
+      "pathway": "EARLY_SHIFT_COVER",
+      "note": "same queue, on floor since 08:16, no cover yet this week"
+    },
+    {
+      "stwid": 415420,
+      "name": "Agent 29",
+      "queue": "billing",
+      "same_queue": true,
+      "arrived_at": "2026-06-11T08:20:19",
+      "cover_minutes_this_week": 0,
+      "pathway": "EARLY_SHIFT_COVER",
+      "note": "same queue, on floor since 08:20, no cover yet this week"
+    },
+    {
+      "stwid": 663395,
+      "name": "Agent 35",
+      "queue": "billing",
+      "same_queue": true,
+      "arrived_at": "2026-06-11T08:20:30",
+      "cover_minutes_this_week": 0,
+      "pathway": "EARLY_SHIFT_COVER",
+      "note": "same queue, on floor since 08:20, no cover yet this week"
+    },
+    {
+      "stwid": 428495,
+      "name": "Agent 31",
+      "queue": "billing",
+      "same_queue": true,
+      "arrived_at": "2026-06-11T08:21:05",
+      "cover_minutes_this_week": 0,
+      "pathway": "EARLY_SHIFT_COVER",
+      "note": "same queue, on floor since 08:21, no cover yet this week"
+    }
+  ],
+  "sent_at": "2026-06-11T08:55:00"
+}
