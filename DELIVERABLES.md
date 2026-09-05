@@ -65,6 +65,7 @@ Board returns mid-replay. Two alert rows, billing opening 08:25 and tech support
 - [x] `/alerts/{id}/narrate`, `/chat`, `/usage` endpoints
 - [x] `tests/test_agent.py` — 17 offline checks plus 3 `live` ones behind a marker
 - [x] `samples/api_alerts_narrated.json`, `api_chat.json`, `usage.json`
+- [x] `samples/SAMPLE_IO.md` — paired inputs/outputs for the submission form (D4)
 
 **Check**
 ```

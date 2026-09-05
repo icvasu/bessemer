@@ -198,6 +198,30 @@ def test_an_invented_figure_is_refused_and_nothing_is_saved(shift):
     assert after["narrative"] == before["narrative"], "a refused summary must not be saved"
 
 
+def test_a_summary_with_a_hole_where_a_figure_was_is_refused(shift):
+    """Observed with a small local model: told its service level was invented,
+    it deleted the number and left the sentence, producing "short until ." on
+    the board. A visible gap reads as a bug; the computed summary does not."""
+    alert_id = shift.id_for("billing")
+    result = tools.compose_alert(
+        alert_id, narrative="Billing is four short until . It will cost  per day."
+    )
+    assert result["status"] == "error"
+    assert "gap" in result["error"]
+
+
+def test_a_summary_that_is_really_a_function_call_is_refused(shift):
+    """Observed on a small local model: it wrote the call it was meant to make
+    as the argument, and the board displayed `compose_alert(alert_id=...` to the
+    manager as the morning's summary."""
+    alert_id = shift.id_for("billing")
+    result = tools.compose_alert(
+        alert_id, narrative=f'compose_alert(alert_id={alert_id}, narrative="Billing is short.")'
+    )
+    assert result["status"] == "error"
+    assert "function call" in result["error"]
+
+
 def test_a_grounded_summary_still_saves(shift):
     """The other half of the guard: figures taken from the alert must pass, or
     the check would simply delete the narrative layer."""

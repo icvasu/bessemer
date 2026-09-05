@@ -4,7 +4,7 @@ One FastAPI process serves both the API and the board, so hosting is one web
 service plus one Postgres. No separate frontend deploy, no build step.
 
 ```
-browser ──HTTPS──> host (Render or Vercel) ──> Postgres  (trips, roster, alerts)
+browser ──HTTPS──> host (Railway / Render) ──> Postgres  (trips, roster, alerts)
                    (FastAPI)                  └─> OpenAI via LiteLLM  (narration, chat)
                    GET  /        -> web/index.html
                    GET  /board   -> the deterministic readiness board
@@ -17,14 +17,39 @@ API host to configure in the frontend. The API reads Postgres for every board
 figure. Only narration and chat call the model, which is why a deploy with no
 `OPENAI_API_KEY` still shows a fully working board.
 
-## Deploy
+The submission repo is <https://github.com/icvasu/bessemer>. Railway is the
+host that matches this process. Render is the same shape. Vercel can run the
+code but is a worse fit for the clock.
+
+## Deploy on Railway
+
+`railway.toml` sets the start command and `/health`. You still add Postgres
+and seed it.
+
+1. Go to <https://railway.com/new> and choose **Deploy from GitHub repo**.
+2. Select `icvasu/bessemer`, branch `main`.
+3. **+ New → Database → PostgreSQL**. On the web service, add
+   `DATABASE_URL=${{Postgres.DATABASE_URL}}` (use the database service's
+   actual name if it is not `Postgres`).
+4. Optional: `OPENAI_API_KEY` on the web service. The board works without it.
+5. **Settings → Networking → Generate Domain**.
+6. Seed, then **Restart** the web service:
+
+```bash
+deploy/seed_remote.sh '<DATABASE_PUBLIC_URL from the Postgres service>'
+```
+
+Use the **public** URL. The seeder runs on your laptop; the internal
+`.railway.internal` host is not reachable from home.
+
+## Deploy on Render
 
 `render.yaml` is a Render Blueprint that creates both resources and wires the
 database credentials into the web service automatically.
 
 1. Go to <https://dashboard.render.com/blueprints> and click **New Blueprint
    Instance**.
-2. Point it at `github.com/peekuh/bessemer`, branch `main`. Render reads
+2. Point it at `github.com/icvasu/bessemer`, branch `main`. Render reads
    `render.yaml` and offers to create `bessemer` (web) and `bessemer-db`
    (Postgres).
 3. It prompts for `OPENAI_API_KEY`. Paste one, or leave it blank and add it
@@ -42,7 +67,7 @@ Postgres, so the database is a Neon project (Vercel Marketplace) or any
 reachable Postgres, including the Render one above.
 
 1. Push this branch, then go to <https://vercel.com/new> and import
-   `github.com/peekuh/bessemer`.
+   `github.com/icvasu/bessemer`.
 2. Vercel reads `pyproject.toml` (`tool.vercel.entrypoint = "app.api:app"`)
    and `vercel.json`. No build command to set.
 3. Add a Postgres. Easiest: Vercel dashboard → **Storage → Create Database →
@@ -103,8 +128,8 @@ the web service, and reseed.
 
 | Variable | Set by | Needed for |
 | --- | --- | --- |
-| `PGHOST` `PGPORT` `PGUSER` `PGPASSWORD` `PGDATABASE` | Render Blueprint, or Neon on Vercel | everything |
-| `DATABASE_URL` / `DATABASE_URL_UNPOOLED` | Neon on Vercel | same, used if `BESSEMER_DSN` is unset |
+| `PGHOST` `PGPORT` `PGUSER` `PGPASSWORD` `PGDATABASE` | Render Blueprint | everything |
+| `DATABASE_URL` / `DATABASE_URL_UNPOOLED` | Railway Postgres, or Neon on Vercel | same, used if `BESSEMER_DSN` is unset |
 | `OPENAI_API_KEY` | you, in the dashboard | narration and chat only |
 | `BESSEMER_MODEL` | optional, defaults to `openai/gpt-5.6-luna` | picking another model |
 | `BESSEMER_OFFICE` `BESSEMER_BU` `BESSEMER_SHIFT` `BESSEMER_DEMO_DATE` | optional | pointing at another tenant |

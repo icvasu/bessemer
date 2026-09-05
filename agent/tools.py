@@ -299,8 +299,32 @@ def compose_alert(
         return _fail(
             f"nothing was saved: the text states {', '.join(sorted(set(invented)))}, "
             f"which get_alert did not return. Every figure must come from "
-            f"get_alert. Rewrite it using those figures, or leave the figure out "
-            f"of the sentence, and call compose_alert again."
+            f"get_alert. Rewrite the sentence around the figures get_alert gave "
+            f"you, and call compose_alert again. Do not delete the figure and "
+            f"leave the sentence otherwise intact."
+        )
+
+    # A model told its figure was wrong sometimes deletes the figure rather than
+    # correcting it, which leaves "four agents short until ." on the board. An
+    # empty slot reads as a bug to the manager and is worse than the computed
+    # summary the board falls back to, so it is refused as well.
+    if re.search(r"\s[.,;%]|\s{2,}", narrative):
+        return _fail(
+            "nothing was saved: the summary has a gap in it where a figure "
+            "should be. Write the sentence with the figure from get_alert in "
+            "place, or write a different sentence that does not need it."
+        )
+
+    # Observed on a small local model: it wrote the call it was supposed to make
+    # as the text of the argument, and `compose_alert(alert_id=..., narrative="`
+    # rendered on the board as the morning's summary. A manager's summary never
+    # contains a function call, so this costs nothing and catches a whole family
+    # of malformed turns.
+    if re.search(r"\b(compose_alert|get_alert|record_action|get_shift_board)\s*\(", narrative):
+        return _fail(
+            "nothing was saved: the summary contains a function call instead of "
+            "prose. Send only the sentences the manager should read as the "
+            "narrative argument."
         )
 
     alert.narrative = narrative.strip()

@@ -1,0 +1,13 @@
+# Railway: one web process, same uvicorn target as local and Render.
+# Pair with a Postgres plugin and set DATABASE_URL=${{Postgres.DATABASE_URL}}.
+# Seed with deploy/seed_remote.sh against DATABASE_PUBLIC_URL. See DEPLOY.md.
+
+[build]
+builder = "RAILPACK"
+
+[deploy]
+startCommand = "uvicorn app.api:app --host 0.0.0.0 --port $PORT"
+healthcheckPath = "/health"
+healthcheckTimeout = 120
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3

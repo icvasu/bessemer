@@ -6,9 +6,17 @@ This is an agent that answers it. It watches every rostered agent's commute, pro
 
 Built on MoveInSync's anonymised trip-log dataset for the **team / line manager** persona.
 
-How this ships into MoveInSync, what is demo-only, and the honest gaps: [docs/SHIP.md](docs/SHIP.md).
+| For judges | |
+|---|---|
+| Spoken pitch | [docs/JURY.md](docs/JURY.md) |
+| How this ships (keep vs wrap) | [docs/SHIP.md](docs/SHIP.md) |
+| Sample input / output | [samples/SAMPLE_IO.md](samples/SAMPLE_IO.md) |
+| Slides | [docs/deck.md](docs/deck.md) |
+| Host it | Railway — [DEPLOY.md](DEPLOY.md) |
 
-For judges: [docs/JURY.md](docs/JURY.md) — a short spoken pitch.
+**Stack:** Python 3.12 · FastAPI · Postgres · Google ADK + LiteLLM · one HTML board, no frontend build.
+
+**90-second demo:** start the app, press **Jump to 08:55**, read the Billing note, click the green cover button, ask chat *Who covered this morning?*
 
 ![The shift board at 08:55](samples/screens/board_0855.png)
 
@@ -28,7 +36,7 @@ Every figure in that came from a computation, not from the model. The model chos
 
 ## Setup
 
-You need Postgres running locally and `uv`.
+You need **Python 3.12+**, **Postgres** (16+), and [`uv`](https://docs.astral.sh/uv/). The organiser dataset folder belongs in the repo root and is gitignored — do not commit it.
 
 ```bash
 # 1. Database
@@ -40,8 +48,9 @@ uv sync
 uv run python -m db.load          # about 90 seconds, 2.3M rows
 uv run python -m db.seed_roster   # 24 riders, a cover pool, a night shift
 
-# 3. Model key
+# 3. Model key (optional — the board works without it)
 echo "OPENAI_API_KEY=sk-..." > agent/.env
+# never commit agent/.env
 
 # 4. Run
 uv run uvicorn app.api:app --port 8000
@@ -50,10 +59,33 @@ open http://localhost:8000
 
 Config lives in `app/config.py` and is overridable by environment variable. The demo defaults to `pinnacle-Slc`, `Clearwater Campus`, the `09:00` shift, on `2026-06-11`.
 
+Press **Jump to 08:55** to open on the crunch. Press **Prepare the story** once if you will present with the slider.
+
 ```bash
-uv run pytest tests/ -m "not live"    # 112 tests, no model calls, ~35s
+uv run pytest tests/ -m "not live"    # no model calls, ~35s
 uv run pytest tests/test_agent.py -m live   # 3 tests against the real model
 ```
+
+Captured request/response pairs for the submission form: [samples/SAMPLE_IO.md](samples/SAMPLE_IO.md). Raw JSON sits in `samples/` (`api_board_0855.json`, `api_alerts_narrated.json`, `api_action.json`, `api_chat.json`).
+
+## Host it
+
+One FastAPI process serves the API and the board. Pair it with one Postgres. **Railway** is the host that matches this architecture (a long-running process, same as local). Render works the same way. Vercel can run the code but kills the background clock; use Jump to 08:55 there.
+
+**Railway (recommended)**
+
+1. New project at [railway.com/new](https://railway.com/new) → **Deploy from GitHub** → `icvasu/bessemer`.
+2. `railway.toml` already sets the start command (`uvicorn app.api:app --host 0.0.0.0 --port $PORT`) and `/health`.
+3. **+ New → Database → PostgreSQL**. On the web service, set `DATABASE_URL=${{Postgres.DATABASE_URL}}`.
+4. Optional: `OPENAI_API_KEY` on the web service. Without it the board still works.
+5. **Settings → Networking → Generate Domain**.
+6. Seed from your laptop (local DB must already be loaded):
+
+```bash
+deploy/seed_remote.sh '<Postgres DATABASE_PUBLIC_URL from the Railway dashboard>'
+```
+
+Then restart the web service. Full notes, Render, and env vars: [DEPLOY.md](DEPLOY.md).
 
 ## Telling it as a story
 
@@ -211,6 +243,8 @@ All from the dataset's own README, each counted in the load log.
 
 ## Deployability
 
-Postgres for everything durable, including the agent's sessions. Every table and every endpoint is keyed by `business_unit` and `office`, so pointing this at another tenant is a config change. The reasoning core does no model calls and no per-tick database round trips, which is what makes it credible at enterprise volume. The ADK agent deploys to Cloud Run with one command, and the model behind it is a one-line swap.
+Postgres for everything durable, including the agent's sessions. Every table and every endpoint is keyed by `business_unit` and `office`, so pointing this at another tenant is a config change. The reasoning core does no model calls and no per-tick database round trips, which is what makes it credible at enterprise volume. The model is a one-line swap (`BESSEMER_MODEL`). Fallback drafts still send if the model is down.
 
-The replay is the only piece that would be replaced in production, by a consumer of live trip events. Nothing downstream would notice. Partner / ship notes: [docs/SHIP.md](docs/SHIP.md).
+This build is **production-shaped, not a finished product**. Keep: tenant-scoped API, Postgres, `/health`, secrets in env (never git). Wrap with MoveInSync's login and swap `app/replay.py` for their live trip feed. Do not quote the night-shift hold-over as measured fact — it is labelled synthetic. Honest list: [docs/SHIP.md](docs/SHIP.md).
+
+Application code is MIT. The organiser dataset is not in this repo and is not ours to redistribute.
