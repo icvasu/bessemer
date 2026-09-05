@@ -65,12 +65,19 @@ from app.core.alerts import Alert
 from app.sessions import Session, bind_session, unbind_session
 from app import store
 from agent.agent import MODEL, missing_credentials, narrator_agent, root_agent
-from agent.tools import compose_alert as save_narrative
+from agent.tools import (
+    compose_alert as save_narrative,
+    get_cover_candidates,
+    get_shift_board,
+)
 
 log = logging.getLogger(__name__)
 
 APP_NAME = "bessemer"
 INVOCATION_TIMEOUT_S = 60.0
+CHAT_TIMEOUT_S = 45.0
+"""Headroom under Vercel's 60s cap so a hung model still leaves time for the
+board fallback. Compose can use the full minute; chat cannot."""
 
 RETRY_ATTEMPTS = 2
 """One retry, then stop. A call that fails twice is an outage rather than a
@@ -364,23 +371,77 @@ def _unreachable(exc: Exception) -> dict[str, Any]:
     }
 
 
+def _board_reply(session: Session) -> str:
+    """A grounded answer from the computed board when the model is down.
+
+    Same numbers the tools would have returned. Without this, a 429 leaves the
+    manager with a shrug; the cover names and service levels are already in
+    memory and do not need a model to be read aloud.
+    """
+    token = bind_session(session)
+    try:
+        packed = get_shift_board()
+        if packed.get("status") != "success":
+            return ""
+        board = packed["board"]
+        clock = session.replay.now.strftime("%H:%M")
+        bits: list[str] = []
+        for queue in board.get("queues") or []:
+            sl = ((queue.get("impact") or {}).get("service_level") or {})
+            if sl.get("meets_target") is not False:
+                continue
+            cover = get_cover_candidates(queue["queue"], 3)
+            names = [p["name"] for p in cover.get("candidates") or [] if p.get("name")]
+            who = ", ".join(names) if names else "nobody already on the floor"
+            bits.append(
+                f"{queue.get('display_name') or queue['queue']} is at "
+                f"{queue.get('coverage_pct')}% coverage and "
+                f"{sl.get('service_level_pct')}% service level against a "
+                f"{sl.get('target_pct')}% target. People already on the floor "
+                f"who can cover: {who}."
+            )
+        if bits:
+            n = len(bits)
+            verb = "is" if n == 1 else "are"
+            noun = "queue" if n == 1 else "queues"
+            return f"At {clock}, {n} {noun} {verb} breaching SLA. " + " ".join(bits)
+        totals = board.get("totals") or {}
+        return (
+            f"At {clock} the floor is {totals.get('on_floor')} in of "
+            f"{totals.get('rostered')} rostered, {totals.get('coverage_pct')}% "
+            f"coverage. No queue is breaching its service-level target right now."
+        )
+    finally:
+        unbind_session(token)
+
+
+def _chat_fallback(session: Session, exc: Exception) -> dict[str, Any]:
+    """Prefer the board's own figures over a 'model not ready' shrug."""
+    grounded = _board_reply(session)
+    if grounded:
+        return {"reply": grounded, "error": str(exc), "usage": USAGE.as_dict()}
+    return _unreachable(exc)
+
+
 async def ask(session: Session, text: str, user_id: str = "line_manager") -> dict[str, Any]:
     """Answer a manager's question about the shift."""
     try:
         reply = await asyncio.wait_for(
             _invoke(session, user_id, text, reason="chat"),
-            timeout=INVOCATION_TIMEOUT_S,
+            timeout=CHAT_TIMEOUT_S,
         )
     except Exception as exc:  # noqa: BLE001
         USAGE.failures += 1
         log.warning("chat failed: %s", exc)
-        return _unreachable(exc)
-    return {"reply": reply or "No answer came back.", "usage": USAGE.as_dict()}
+        return _chat_fallback(session, exc)
+    if not reply:
+        return {"reply": _board_reply(session) or "No answer came back.", "usage": USAGE.as_dict()}
+    return {"reply": reply, "usage": USAGE.as_dict()}
 
 
 async def ask_stream(session: Session, text: str, user_id: str = "line_manager"):
     """Yield chat progress as dicts so the board can paint tokens as they land."""
-    deadline = time.perf_counter() + INVOCATION_TIMEOUT_S
+    deadline = time.perf_counter() + CHAT_TIMEOUT_S
     seen = ""
     reply = ""
     try:
@@ -388,7 +449,7 @@ async def ask_stream(session: Session, text: str, user_id: str = "line_manager")
             session, user_id, text, reason="chat", stream=True
         ):
             if time.perf_counter() > deadline:
-                raise TimeoutError(f"model call exceeded {INVOCATION_TIMEOUT_S:.0f}s")
+                raise TimeoutError(f"model call exceeded {CHAT_TIMEOUT_S:.0f}s")
             calls = event.get_function_calls()
             if calls:
                 name = (calls[0].name or "a tool").replace("_", " ")
@@ -410,8 +471,10 @@ async def ask_stream(session: Session, text: str, user_id: str = "line_manager")
                 )
                 if leftover:
                     yield {"type": "delta", "text": leftover}
-        yield {"type": "done", "reply": reply or "No answer came back.", "usage": USAGE.as_dict()}
+        if not reply:
+            reply = _board_reply(session) or "No answer came back."
+        yield {"type": "done", "reply": reply, "usage": USAGE.as_dict()}
     except Exception as exc:  # noqa: BLE001
         USAGE.failures += 1
         log.warning("chat failed: %s", exc)
-        yield {"type": "error", **_unreachable(exc)}
+        yield {"type": "done", **_chat_fallback(session, exc)}

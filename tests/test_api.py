@@ -88,6 +88,43 @@ def test_board_catches_up_after_the_background_clock_dies(client):
     assert board["time"] >= (started + timedelta(minutes=2)).strftime("%H:%M")
 
 
+def test_a_jump_holds_the_clock_against_catch_up(client):
+    """Jump is a pin. A leftover running session must not skip past it."""
+    from datetime import date, datetime, timedelta
+
+    from app.config import BUSINESS_UNIT
+    from app.sessions import get_session
+
+    client.post("/replay/start", params={"speed": 60})
+    session = get_session(
+        BUSINESS_UNIT, OFFICE, date.fromisoformat(DEMO_DATE), SHIFT_TYPE, create=False
+    )
+    session.started_wall = datetime.now() - timedelta(seconds=30)
+    session.started_clock = session.replay.now
+    session.running = True
+    at(client, "08:55")
+    board = client.get("/board").json()
+    assert board["time"] == "08:55"
+    assert board["running"] is False
+
+
+def test_a_new_process_restores_the_jumped_clock(client):
+    """Vercel starts a fresh process on the next request. Chat after Jump
+    has to land on the same minute, not 07:30."""
+    from datetime import date
+
+    from app.config import BUSINESS_UNIT
+    from app.sessions import SESSIONS, get_session
+
+    at(client, "08:55")
+    SESSIONS.clear()
+    session = get_session(
+        BUSINESS_UNIT, OFFICE, date.fromisoformat(DEMO_DATE), SHIFT_TYPE
+    )
+    assert session.replay.now.strftime("%H:%M") == "08:55"
+    assert session.running is False
+
+
 def test_rewinding_starts_the_morning_over(client):
     """The clock only moves forward, so asking for an earlier time has to
     rebuild the session rather than silently do nothing."""
@@ -158,6 +195,34 @@ def test_alerts_survive_a_restart_of_the_session(client):
     at(client, "08:55")
     after = {a["queue"]: a["id"] for a in client.get("/alerts").json()["alerts"]}
     assert before == after, "re-running the morning must not duplicate alert rows"
+
+
+def test_alerts_reload_after_the_process_forgets_the_session(client):
+    """Vercel starts a fresh process with an empty SESSIONS dict.
+
+    Jump writes the clock next to the alerts. The next request must seek
+    there and reload ids — not open at 07:30 with an empty list — and Act
+    has to find the same row.
+    """
+    at(client, "08:55")
+    before = client.get("/alerts").json()
+    assert before["clock"].endswith("08:55:00")
+    assert before["alerts"]
+    ids = {a["queue"]: a["id"] for a in before["alerts"]}
+    SESSIONS.clear()
+
+    after = client.get("/alerts").json()
+    assert after["clock"].endswith("08:55:00")
+    assert {a["queue"]: a["id"] for a in after["alerts"]} == ids
+    assert all(a["status"] != "RESOLVED" for a in after["alerts"])
+    assert all(a["options"] for a in after["alerts"])
+
+    billing = next(a for a in after["alerts"] if a["queue"] == "billing")
+    response = client.post(
+        f"/alerts/{billing['id']}/act", params={"pathway": "EARLY_SHIFT_COVER"}
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == "recorded"
 
 
 def test_events_feed_is_ordered_and_filterable(client):

@@ -27,7 +27,7 @@ from datetime import date, datetime
 from typing import Any
 
 from app.core.alerts import Alert, Cause, Status
-from app.db import connect, query, query_one
+from app.db import connect, execute, query, query_one
 
 UPSERT_ALERT = """
 INSERT INTO shift_alerts (
@@ -88,6 +88,60 @@ def load_alerts(office: str, shift_date: date, shift_type: str) -> list[dict[str
         FROM shift_alerts
         WHERE office = %s AND shift_date = %s AND shift_type = %s
         ORDER BY (status = 'RESOLVED'), opened_at
+        """,
+        (office, shift_date, shift_type),
+    )
+
+
+# The replay cursor is process-local. On Vercel that process dies between
+# requests, so Jump + GET /alerts on another instance would open at 07:30
+# with an empty list unless the clock is written next to the alerts.
+_clock_ready = False
+
+ENSURE_CLOCK = """
+CREATE TABLE IF NOT EXISTS shift_clock (
+    office     text      NOT NULL,
+    shift_date date      NOT NULL,
+    shift_type text      NOT NULL,
+    clock      timestamp NOT NULL,
+    running    boolean   NOT NULL DEFAULT false,
+    PRIMARY KEY (office, shift_date, shift_type)
+)
+"""
+
+
+def _ensure_clock_table() -> None:
+    global _clock_ready
+    if _clock_ready:
+        return
+    execute(ENSURE_CLOCK)
+    _clock_ready = True
+
+
+def save_clock(
+    office: str, shift_date: date, shift_type: str, clock: datetime, running: bool
+) -> None:
+    """Remember where this shift's cursor is, so the next process can seek there."""
+    _ensure_clock_table()
+    execute(
+        """
+        INSERT INTO shift_clock (office, shift_date, shift_type, clock, running)
+        VALUES (%s, %s, %s, %s, %s)
+        ON CONFLICT (office, shift_date, shift_type) DO UPDATE SET
+            clock   = EXCLUDED.clock,
+            running = EXCLUDED.running
+        """,
+        (office, shift_date, shift_type, clock, running),
+    )
+
+
+def load_clock(office: str, shift_date: date, shift_type: str) -> dict[str, Any] | None:
+    """The last persisted cursor for this shift, or None if nobody has jumped yet."""
+    _ensure_clock_table()
+    return query_one(
+        """
+        SELECT clock, running FROM shift_clock
+        WHERE office = %s AND shift_date = %s AND shift_type = %s
         """,
         (office, shift_date, shift_type),
     )
@@ -225,6 +279,14 @@ def reset_shift(office: str, shift_date: date, shift_type: str) -> int:
             (office, shift_date, shift_type),
         )
         removed = cur.rowcount
+        cur.execute(ENSURE_CLOCK)
+        cur.execute(
+            """
+            DELETE FROM shift_clock
+            WHERE office = %s AND shift_date = %s AND shift_type = %s
+            """,
+            (office, shift_date, shift_type),
+        )
         conn.commit()
         return removed
 

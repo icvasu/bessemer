@@ -188,6 +188,18 @@ async def start_replay(
         if target < session.replay.now:
             # The clock only moves forward, so rewinding means starting over.
             session = _recreate(session)
+        # Pause first. A live ticker (or Vercel catch-up from an old
+        # started_wall) would otherwise walk past the landing on the next read.
+        session.running = False
+        session.started_wall = None
+        session.started_clock = None
+        if session.task and not session.task.done():
+            session.task.cancel()
+            try:
+                await session.task
+            except asyncio.CancelledError:
+                pass
+        session.task = None
         session.replay.seek(target)
         session.persist()
         # A jump lands on a situation worth explaining as often as the clock
@@ -203,6 +215,7 @@ async def start_replay(
     session.started_wall = datetime.now()
     session.started_clock = session.replay.now
     session.task = asyncio.create_task(_run(session))
+    session.persist()
     return {"status": "running", "speed": speed, "clock": session.replay.now.isoformat()}
 
 
@@ -315,6 +328,7 @@ def _recreate(session: Session) -> Session:
         session.replay.office,
         session.replay.shift_date,
         session.replay.shift_type,
+        restore=False,
     )
     fresh.speed = session.speed
     return fresh
@@ -356,7 +370,10 @@ async def pause_replay(scope: Scope = Depends()) -> dict[str, Any]:
         except asyncio.CancelledError:
             pass
     session.running = False
+    session.started_wall = None
+    session.started_clock = None
     session.task = None
+    session.persist()
     return {"status": "paused", "clock": session.replay.now.isoformat()}
 
 
@@ -477,7 +494,7 @@ async def act(
     returns is the message the manager sends; the row it writes is what lets
     tomorrow's alert know who covered today.
     """
-    session = scope.session(create=False)
+    session = scope.session()
     session.persist()
     found = session.alert_for(alert_id)
     if found is None:

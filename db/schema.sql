@@ -173,6 +173,17 @@ CREATE TABLE IF NOT EXISTS cover_log (
     PRIMARY KEY (stwid, iso_week)
 );
 
+-- Replay cursor. Process-local SESSIONS die on Vercel; Jump writes here so
+-- the next instance can seek to the same minute and reload alerts.
+CREATE TABLE IF NOT EXISTS shift_clock (
+    office     text      NOT NULL,
+    shift_date date      NOT NULL,
+    shift_type text      NOT NULL,
+    clock      timestamp NOT NULL,
+    running    boolean   NOT NULL DEFAULT false,
+    PRIMARY KEY (office, shift_date, shift_type)
+);
+
 -- ---------------------------------------------------------------- views
 
 -- Inbound legs only, cleaned to the population the line manager cares about.

@@ -357,6 +357,50 @@ def test_the_cached_narrative_is_reused_for_the_same_situation(shift):
     assert found["narrative"] == "Cached text."
 
 
+# ---------------------------------------------------------- model down
+
+
+def test_chat_answers_from_the_board_when_the_model_is_down(shift, monkeypatch):
+    """A 429 must still name people and figures the tools already computed."""
+    from agent import runner as agent_runner
+
+    async def boom(*_args, **_kwargs):
+        raise RuntimeError("litellm.RateLimitError: credit_balance_exhausted")
+
+    monkeypatch.setattr(agent_runner, "_invoke", boom)
+    answer = asyncio.run(
+        agent_runner.ask(shift, "Who can cover the queues that are breaching SLA?")
+    )
+    reply = answer["reply"]
+    assert "08:55" in reply
+    assert "67" in reply
+    assert "Agent" in reply
+    assert "I could not reach the model" not in reply
+
+
+def test_chat_stream_falls_back_to_the_board_when_the_model_is_down(shift, monkeypatch):
+    from agent import runner as agent_runner
+
+    async def boom(*_args, **_kwargs):
+        raise RuntimeError("litellm.RateLimitError: credit_balance_exhausted")
+        yield {}  # async generator; never reached
+
+    monkeypatch.setattr(agent_runner, "_iter_events", boom)
+
+    async def collect():
+        items = []
+        async for item in agent_runner.ask_stream(shift, "Who can cover?"):
+            items.append(item)
+        return items
+
+    items = asyncio.run(collect())
+    assert items
+    last = items[-1]
+    assert last["type"] == "done"
+    assert "Agent" in last["reply"]
+    assert "67" in last["reply"]
+
+
 # -------------------------------------------------------------------- live
 
 

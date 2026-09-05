@@ -5,15 +5,16 @@ replay without importing the web layer. Without this split, `api` imports
 `agent` to answer chat and `agent` imports `api` to read the board, which is a
 cycle Python will refuse at the least convenient moment.
 
-The registry is process-local and deliberately so. Everything durable is in
-Postgres: alerts, the actions taken on them, the narrative cache. What lives
-here is only the cursor into a morning, which is cheap to rebuild and
-meaningless to persist.
+The registry is process-local. Alerts and the cursor are also written to
+Postgres, because a serverless host starts a fresh process on the next
+request: without that write, Jump lands on one instance and GET /alerts
+opens at 07:30 with an empty list on another.
 """
 
 from __future__ import annotations
 
 import asyncio
+import json
 from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
@@ -77,9 +78,49 @@ class Session:
         )
 
     def persist(self) -> None:
-        """Write every alert the replay is holding, remembering its row id."""
+        """Write the cursor and every alert, remembering each row id.
+
+        Hydrate first so a seek that rebuilt alerts from first principles
+        picks up the ids and prose already in Postgres, instead of saving
+        a blank narrative over a row the last instance already wrote.
+        """
+        self.hydrate()
         for queue, alert in self.replay.alerts.items():
             self.alert_ids[queue] = store.save_alert(alert)
+        if self.replay.now is not None:
+            store.save_clock(
+                self.replay.office,
+                self.replay.shift_date,
+                self.replay.shift_type,
+                self.replay.now,
+                running=self.running,
+            )
+
+    def hydrate(self) -> None:
+        """Attach row ids and cached prose after a seek rebuilt the alerts."""
+        rows = store.load_alerts(
+            self.replay.office, self.replay.shift_date, self.replay.shift_type
+        )
+        by_queue = {row["queue"]: row for row in rows}
+        for queue, alert in self.replay.alerts.items():
+            row = by_queue.get(queue)
+            if row:
+                self.alert_ids[queue] = row["id"]
+            cached = store.find_cached_narrative(alert.payload_hash())
+            drafts = (cached or {}).get("drafts") if cached else None
+            if drafts is None and row:
+                drafts = row.get("drafts")
+            if isinstance(drafts, str):
+                drafts = json.loads(drafts) if drafts else {}
+            drafts = drafts or {}
+            narrative = (cached or {}).get("narrative") if cached else None
+            if not narrative and row and row.get("payload_hash") == alert.payload_hash():
+                narrative = row.get("narrative")
+            if narrative and alert.narrative is None:
+                alert.narrative = narrative
+                if drafts:
+                    alert.drafts = drafts
+                alert.mark_narrated(self.replay.now)
 
     def alert_for(self, alert_id: int) -> tuple[str, Alert] | None:
         # Ollama/LiteLLM pass tool arguments as strings; 1851 != "1851"
@@ -136,8 +177,13 @@ def get_session(
     shift_type: str,
     create: bool = True,
     mode: str | None = None,
+    restore: bool = True,
 ) -> Session:
-    """Fetch the session for one tenant/office/shift, creating it if asked."""
+    """Fetch the session for one tenant/office/shift, creating it if asked.
+
+    `restore` seeks a new process to the last persisted clock. Rewind
+    (`_recreate`) turns it off so the caller can seek from 07:30 itself.
+    """
     key = session_key(business_unit, office, shift_date, shift_type)
     session = SESSIONS.get(key)
     if session is None:
@@ -154,13 +200,63 @@ def get_session(
                 f"no roster rows for {office} {shift_type} on {shift_date}"
             )
         session = Session(replay=replay, mode=mode or MODE)
-        if session.live:
-            # A live board opens where the wall clock says it is, with the
-            # morning behind it already stepped through, so the alert history
-            # and the feed are the ones that actually built up.
-            session.speed = LIVE_SPEED
-            replay.seek(live_start(replay))
         SESSIONS[key] = session
+        if restore:
+            stored = store.load_clock(office, shift_date, shift_type)
+            if stored is None and session.live:
+                # A live board opens where the wall clock says it is, with the
+                # morning behind it already stepped through, so the alert history
+                # and the feed are the ones that actually built up.
+                session.speed = LIVE_SPEED
+                replay.seek(live_start(replay))
+            else:
+                session = align_to_persisted(session)
+        return session
+    if restore:
+        return align_to_persisted(session)
+    return session
+
+
+def align_to_persisted(session: Session) -> Session:
+    """Match this process's cursor to the last persist.
+
+    Jump writes the clock and `running=false`. A warm instance that was
+    still ticking live would otherwise catch up past the landing and
+    overwrite it.
+    """
+    stored = store.load_clock(
+        session.replay.office, session.replay.shift_date, session.replay.shift_type
+    )
+    if stored is None:
+        return session
+    clock = stored["clock"]
+    if clock < session.replay.now:
+        drop_session(
+            session.replay.business_unit,
+            session.replay.office,
+            session.replay.shift_date,
+            session.replay.shift_type,
+        )
+        return get_session(
+            session.replay.business_unit,
+            session.replay.office,
+            session.replay.shift_date,
+            session.replay.shift_type,
+        )
+    if clock > session.replay.now:
+        session.replay.seek(clock)
+    if stored["running"]:
+        session.running = True
+        if session.started_wall is None:
+            session.started_wall = datetime.now()
+            session.started_clock = session.replay.now
+    else:
+        session.running = False
+        session.started_wall = None
+        session.started_clock = None
+        if session.task and not session.task.done():
+            session.task.cancel()
+        session.task = None
     return session
 
 

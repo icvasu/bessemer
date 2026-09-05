@@ -98,6 +98,10 @@ def get_shift_board() -> dict[str, Any]:
     # projection bases and spreads for the UI; sending all of it on every turn
     # would triple the prompt for detail nobody asks about.
     for queue in board["queues"]:
+        # The id of this queue's open alert, so a follow-up `get_alert` has a
+        # real one to use. Without it the model has no way to know an id and
+        # invents one, then reports its own refusal to the manager.
+        queue["alert_id"] = session.alert_ids.get(queue["queue"])
         queue["riders"] = [
             {
                 "name": r["name"],
