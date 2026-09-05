@@ -10,6 +10,7 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
+from app import store
 from app.api import SESSIONS, app
 from app.config import DEMO_DATE, OFFICE, SHIFT_TYPE
 from app.db import query
@@ -18,10 +19,16 @@ from app.db import query
 @pytest.fixture()
 def client():
     SESSIONS.clear()
+    # The narrative memo is global by design and survives resets, which is
+    # exactly right in production and exactly wrong between tests: a fake
+    # draft written by one test would come back as the "sendable" draft in
+    # another. Clear it on both sides.
+    store.forget_narratives()
     with TestClient(app) as test_client:
         test_client.post("/replay/reset", params={"clear_cover": True})
         yield test_client
         test_client.post("/replay/reset", params={"clear_cover": True})
+    store.forget_narratives()
     SESSIONS.clear()
 
 

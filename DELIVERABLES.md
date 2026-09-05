@@ -83,8 +83,14 @@ Narrative present and naming only real people. Chat answers from the board. Abou
 - [x] `samples/screens/` — desktop, alert panel, mobile
 - [x] Narration detached from the clock so the replay never freezes for a model call
 - [x] Live run at 180x: full morning, alerts narrated, zero failures
+- [x] Pause that actually pauses, and resume from the same tick
+- [x] `app/timeline.py` and the story slider: every minute captured, landmarks derived from the feed, arrow keys step between them, acting from the slider stamps the story's clock
+- [x] "On the way" bucket fixed: counts now add up to the roster at every minute
+- [x] Narrative memo moved to its own table so Start over does not throw it away
+- [x] `schema.sql` brought back in line with the live database (night role, synthetic flag, action cost)
+- [x] `tests/test_timeline.py` — 13 checks
 
-**Check**: a teammate who has not seen the code follows the README and reaches beat 4 in under 5 minutes. `uv run pytest tests/ -m "not live"` passes 98.
+**Check**: a teammate who has not seen the code follows the README and reaches beat 4 in under 5 minutes. `uv run pytest tests/ -m "not live"` passes 112.
 
 ## Cut order if behind
 

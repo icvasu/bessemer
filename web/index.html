@@ -65,7 +65,7 @@
     border-radius: 50%; background: var(--paper);
   }
   .wordmark .product { color: var(--ink-3); font-weight: 500; }
-  .top .site { margin-left: auto; color: var(--ink-2); }
+  .top .site { margin-left: auto; color: var(--ink-2); white-space: nowrap; }
   .top .site strong { color: var(--ink); font-weight: 500; }
 
   /* ------------------------------------------------------------ layout */
@@ -331,6 +331,7 @@
         <span class="title">Tell the morning as a story</span>
         <span class="state" id="story-state">Not prepared yet. This captures every minute from 07:30 to 10:00 and writes up each alert as it opens. About two minutes the first time.</span>
         <div class="right">
+          <button class="btn quiet" id="story-rebuild" hidden title="Capture the morning again">Rebuild</button>
           <button class="btn quiet" id="story-live" hidden>Back to live</button>
           <button class="btn" id="story-prepare">Prepare the story</button>
         </div>
@@ -666,6 +667,7 @@
     document.getElementById("story-prepare").hidden = on;
     if (on) {
       document.querySelector(".story .title").innerHTML = `Story <span class="badge">scrubbing</span>`;
+      $("story-state").textContent = "Drag the slider, click a dot, or use the arrow keys.";
     } else {
       document.querySelector(".story .title").textContent = "Tell the morning as a story";
       refresh();
@@ -725,13 +727,28 @@
         renderMarks();
         state.textContent = `${landmarks.length} landmarks. Drag the slider or use the arrow keys.`;
         btn.disabled = false;
+        btn.textContent = "Open the story";
+        timelineReady = true;
+        $("story-rebuild").hidden = false;
         setStoryMode(true);
         showStoryAt("07:30");
       }
     }, 1000);
   }
 
-  $("story-prepare").addEventListener("click", prepareStory);
+  // One handler, one decision. A first version attached a build handler with
+  // addEventListener and then, once a timeline turned out to exist, assigned
+  // an "open" handler to onclick as well. Both fired: opening the story also
+  // rebuilt it, which dropped the ready timeline and cancelled the narrator
+  // mid-sentence.
+  let timelineReady = false;
+  $("story-prepare").addEventListener("click", () => {
+    if (timelineReady) { setStoryMode(true); showStoryAt("07:30"); }
+    else prepareStory();
+  });
+  $("story-rebuild").addEventListener("click", () => {
+    if (confirm("Capture the morning again? Cached write-ups make this quick.")) prepareStory();
+  });
   $("story-live").addEventListener("click", () => setStoryMode(false));
   $("scrub").addEventListener("input", (ev) => showStoryAt(minToHHMM(Number(ev.target.value))));
   $("lm-prev").addEventListener("click", () => stepLandmark(-1));
@@ -746,9 +763,10 @@
   get(`/timeline/status`).then((st) => {
     if (st.ready) {
       landmarks = st.landmarks; renderMarks();
-      $("story-state").textContent = `${landmarks.length} landmarks ready. Prepared earlier; press to scrub.`;
+      timelineReady = true;
+      $("story-state").textContent = `${landmarks.length} landmarks ready from an earlier build.`;
       $("story-prepare").textContent = "Open the story";
-      $("story-prepare").onclick = () => { setStoryMode(true); showStoryAt("07:30"); };
+      $("story-rebuild").hidden = false;
     }
   }).catch(() => {});
 

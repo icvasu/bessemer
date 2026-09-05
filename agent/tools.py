@@ -259,6 +259,9 @@ def compose_alert(
 
     row_id = store.save_alert(alert)
     session.alert_ids[queue] = row_id
+    # Memoise against the situation, not the shift, so the next morning with
+    # the same shape, or the next rehearsal of this one, costs nothing.
+    store.remember_narrative(alert.payload_hash(), alert.narrative, drafts)
     result = {
         "status": "success",
         "alert_id": row_id,

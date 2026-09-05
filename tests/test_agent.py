@@ -39,6 +39,7 @@ def shift():
     SESSIONS.clear()
     store.reset_shift(OFFICE, DEMO, "09:00")
     store.clear_cover_log(DEMO)
+    store.forget_narratives()
 
     replay = Replay(shift_date=DEMO, tick_minutes=1)
     for tick in replay.ticks():
@@ -53,6 +54,7 @@ def shift():
     unbind_session(token)
     store.reset_shift(OFFICE, DEMO, "09:00")
     store.clear_cover_log(DEMO)
+    store.forget_narratives()
     SESSIONS.clear()
 
 
